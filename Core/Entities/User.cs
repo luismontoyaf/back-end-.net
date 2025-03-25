@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Core.Models
 {
@@ -13,10 +14,12 @@ namespace Core.Models
         public required string numDocumento { get; set; }
         public required string correo { get; set; }
         public required DateTime fechaNacimiento { get; set; }
+        [NotMapped]  // Esta propiedad no se almacenará en la BD
         public required string contrasena { get; set; }
         public required string celular { get; set; }
         public required string direccion { get; set; }
         public string? genero { get; set; }
+        public int? estado { get; set; }
     }
 
     public class Employe
@@ -37,5 +40,6 @@ namespace Core.Models
         public required string celular { get; set; }
         public required string direccion { get; set; }
         public string? genero { get; set; }
+        public int? clienteId { get; set; }
     }
 }

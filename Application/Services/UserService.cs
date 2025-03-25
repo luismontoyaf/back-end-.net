@@ -1,7 +1,6 @@
 using Core.Models;
 using Core.Interfaces;
-using System.Security.Cryptography;
-using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using BCrypt.Net;
 
 namespace Application.Services
 {
@@ -22,8 +21,7 @@ namespace Application.Services
                 throw new ArgumentException("Datos inválidos");
             }
 
-            // Hash de la contraseña
-            client.contrasena = HashPassword(client.contrasena);
+            client.estado = 1;
 
             // Llama al repositorio para guardar el usuario
             return _userRepository.CreateUser(client);
@@ -42,7 +40,7 @@ namespace Application.Services
             int tipoUsuario = int.Parse(employe.rol);
 
             // Hash de la contraseña
-            employe.contrasena = HashPassword(employe.contrasena);
+            employe.contrasena = HashPassword(employe.contrasena.Trim());
 
             // Llama al repositorio para guardar el usuario
             return _userRepository.CreateEmploye(new Employe
@@ -60,27 +58,33 @@ namespace Application.Services
                 contrasena = employe.contrasena,
                 celular = employe.celular,
                 direccion = employe.direccion,
-                genero = employe.genero
+                genero = employe.genero,
+                clienteId = employe.clienteId
             });
         }
 
         private string HashPassword(string password)
         {
-            byte[] salt = new byte[16];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(salt);
-            }
-
-            string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-                password: password,
-                salt: salt,
-                prf: KeyDerivationPrf.HMACSHA256,
-                iterationCount: 10000,
-                numBytesRequested: 32
-            ));
-
-            return $"{Convert.ToBase64String(salt)}:{hashed}";
+            return BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
         }
+
+        //private string HashPassword(string password)
+        //{
+        //    byte[] salt = new byte[16];
+        //    using (var rng = RandomNumberGenerator.Create())
+        //    {
+        //        rng.GetBytes(salt);
+        //    }
+
+        //    string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+        //        password: password,
+        //        salt: salt,
+        //        prf: KeyDerivationPrf.HMACSHA256,
+        //        iterationCount: 10000,
+        //        numBytesRequested: 32
+        //    ));
+
+        //    return $"{Convert.ToBase64String(salt)}:{hashed}";
+        //}
     }
 }
