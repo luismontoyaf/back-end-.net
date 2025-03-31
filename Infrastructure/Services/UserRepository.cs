@@ -19,6 +19,42 @@ namespace Infrastructure.Services
             _context = context;
         }
 
+        public Employe GetUserByEmail(string email)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                string query = "SELECT Id, Nombre, Apellidos, Correo, Rol FROM Usuarios WHERE Correo = @Email";
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@Email", email);
+                    connection.Open();
+
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return new Employe
+                            {
+                                Id = reader.GetInt32(0),
+                                nombre = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                                apellidos = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                                tipoDocumento = "", // Asignar un valor por defecto
+                                numDocumento = "", // Asignar un valor por defecto
+                                correo = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                                fechaIngreso = DateTime.Now, // Asignar un valor por defecto
+                                rol = reader.IsDBNull(4) ? string.Empty : reader.GetInt32(4).ToString(),
+                                contrasena = "", // Asignar un valor por defecto
+                                celular = "", // Asignar un valor por defecto
+                                direccion = "" // Asignar un valor por defecto
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null; // Si el usuario no existe, devolvemos null
+        }
+
         //public bool ValidateUser(string username, string password)
         //{
         //    bool isValid = false;

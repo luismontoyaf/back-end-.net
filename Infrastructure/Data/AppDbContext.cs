@@ -9,5 +9,6 @@ namespace Infrastructure.Data
 
         public required DbSet<Client> Clientes { get; set; }
         public required DbSet<Employe> Usuarios { get; set; }
+        public required DbSet<Product> Productos { get; set; }
     }
 }

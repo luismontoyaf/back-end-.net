@@ -7,10 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Infrastructure.Data;
 using Infrastructure.Services;
 using Application.Services;
-using BackendApp.Services;
+using BackendApp.Services; // Eliminar esta línea
 
 var builder = WebApplication.CreateBuilder(args);
-
 
 // Configurar CORS
 builder.Services.AddCors(options =>
@@ -36,10 +35,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Registrar UserRepository como implementación de IUserRepository
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IInfoRepository, InfoRepository>();
 
 // Registrar los servicios
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<InfoService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -47,6 +48,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+
+builder.Services.AddControllers()
+    .AddNewtonsoftJson();
 
 // Configurar autenticación JWT
 var key = Encoding.UTF8.GetBytes("SecrePereiraKey");
@@ -64,7 +68,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-
 var app = builder.Build();
 app.UseCors("AllowAngularApp");
 
@@ -79,12 +82,12 @@ app.UseHttpsRedirection();
 
 var summaries = new[]
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+    };
 
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
@@ -96,7 +99,6 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast")
 .WithOpenApi();
-
 
 if (app.Environment.IsDevelopment())
 {
