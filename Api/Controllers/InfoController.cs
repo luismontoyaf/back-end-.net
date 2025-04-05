@@ -4,6 +4,8 @@ using BackendApp.Services;
 using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Infrastructure.Data;
+
 
 namespace BackendApp.Controllers
 {
@@ -12,17 +14,14 @@ namespace BackendApp.Controllers
     public class InfoController : Controller
     {
         private readonly InfoRepository _repository;
-
         private readonly InfoService _infoService;
 
-
-
-        public InfoController(InfoService infoService)
+        public InfoController(InfoService infoService, AppDbContext context)
         {
             // Cadena de conexión (puedes moverla a configuración)
             string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
 
-            _repository = new InfoRepository(connectionString);
+            _repository = new InfoRepository(connectionString, context);
             _infoService = infoService;
         }
 
@@ -48,6 +47,20 @@ namespace BackendApp.Controllers
             }
 
             return Unauthorized();
+        }
+
+        [HttpGet("getUserInfoByDocument")]
+        [Authorize] // 🔒 Requiere autenticación
+        public IActionResult GetUserInfoByDocument([FromQuery] string document)
+        {
+            var InfoUser = _repository.GetUserInfoByDocument(document);
+
+            if (InfoUser != null)
+            {
+                return Ok(InfoUser); // Devuelve los productos en JSON
+            }
+
+            return NotFound("Producto no encontrado."); ;
         }
 
         [HttpPost("getParameter")]

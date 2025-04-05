@@ -4,29 +4,55 @@ using Microsoft.Data.SqlClient;
 using Core.Models;
 using Core.Interfaces;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using Microsoft.EntityFrameworkCore;
+using Infrastructure.Data;
 
 namespace BackendApp.Services
 {
     public class InfoRepository : IInfoRepository
     {
         private readonly string _connectionString;
+        private readonly AppDbContext _context;
 
-        public InfoRepository(string connectionString)
+        public InfoRepository(string connectionString, AppDbContext context)
         {
             _connectionString = connectionString;
+            _context = context;
+        }
+
+        public Client GetUserInfoByDocument(string cedula)
+        {
+            var client = _context.Clientes
+                .Where(u => u.numDocumento == cedula)
+                .Select(u => new Client
+                {
+                    Id = u.Id,
+                    nombre = u.nombre,
+                    apellidos = u.apellidos,
+                    tipoDocumento = u.tipoDocumento,
+                    numDocumento = u.numDocumento,
+                    fechaNacimiento = (DateTime)u.fechaNacimiento,
+                    direccion = u.direccion,
+                    correo = u.correo,
+                    contrasena = u.contrasena,
+                    celular = u.celular
+                })
+                .FirstOrDefault();
+
+            return client;
         }
 
         public string GetParameter(Info info)
         {
             var image = "";
 
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var connection = new SqlConnection(_connectionString))
             {
                 string query = @"
-                SELECT ValorParametro
-                FROM Parametros WHERE NombreParametro = @NombreParametro";
+                        SELECT ValorParametro
+                        FROM Parametros WHERE NombreParametro = @NombreParametro";
 
-                using (SqlCommand command = new SqlCommand(query, connection))
+                using (var command = new SqlCommand(query, connection))
                 {
                     // Agregar el parámetro antes de abrir la conexión
                     command.Parameters.AddWithValue("@NombreParametro", info.nombreParametro);

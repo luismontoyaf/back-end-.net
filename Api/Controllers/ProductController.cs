@@ -3,12 +3,7 @@ using Core.Models;
 using BackendApp.Services;
 using Application.Services;
 using Microsoft.AspNetCore.JsonPatch;
-using System.Collections.Generic;
-using System.Linq;
 using Infrastructure.Data;
-using System.IO;
-using Microsoft.Data.SqlClient;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace BackendApp.Controllers
 {
