@@ -8,8 +8,12 @@ using Infrastructure.Data;
 using Infrastructure.Services;
 using Application.Services;
 using BackendApp.Services; // Eliminar esta línea
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Establecer tipo de licencia
+QuestPDF.Settings.License = LicenseType.Community;
 
 // Configurar CORS
 builder.Services.AddCors(options =>
@@ -36,11 +40,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IInfoRepository, InfoRepository>();
+builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 
 // Registrar los servicios
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<InfoService>();
+builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<EmailService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
