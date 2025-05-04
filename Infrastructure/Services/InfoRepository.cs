@@ -71,5 +71,34 @@ namespace BackendApp.Services
             return image;
         }
 
+        public string GetParameterByName(string nameParameter)
+        {
+            var parameterValue = "";
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                string query = @"
+                        SELECT ValorParametro
+                        FROM Parametros WHERE NombreParametro = @NombreParametro";
+
+                using (var command = new SqlCommand(query, connection))
+                {
+                    // Agregar el parámetro antes de abrir la conexión
+                    command.Parameters.AddWithValue("@NombreParametro", nameParameter);
+
+                    connection.Open();
+
+                    // Ejecutar la consulta correctamente
+                    var result = command.ExecuteScalar();
+                    if (result != null)
+                    {
+                        parameterValue = result.ToString(); // Convertir a string si el resultado no es nulo
+                    }
+                }
+            }
+
+            return parameterValue;
+        }
+
     }
 }

@@ -10,10 +10,12 @@ namespace Application.Services
     public class InvoiceDocumentService: IDocument
     {
         private readonly InvoiceData _data;
+        private readonly DatosEmpresa _datosEmpresa;
 
-        public InvoiceDocumentService(InvoiceData data)
+        public InvoiceDocumentService(InvoiceData data, DatosEmpresa datosEmpresa)
         {
             _data = data;
+            _datosEmpresa = datosEmpresa;
         }
 
         public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
@@ -264,7 +266,7 @@ namespace Application.Services
                         .AlignRight()
                         .Column(col =>
                         {
-                            col.Item().Text("Mi Empresa S.A.").FontSize(16).Bold();
+                            col.Item().Text($"{_datosEmpresa.Nombre}").FontSize(20).Bold();
                         });
                 });
 
@@ -281,10 +283,11 @@ namespace Application.Services
                             .Column(innerCol =>
                             {
                                 innerCol.Item().Text("Datos del Cliente")?.FontSize(14).Bold();
-                                innerCol.Item().Text($"Nombre: {_data.ClientName}");
-                                innerCol.Item().Text("Documento: 12345678");
-                                innerCol.Item().Text($"Correo: {_data.ClientEmail}");
-                                innerCol.Item().Text("Celular: 3001234567");
+                                innerCol.Item().Text(" ");
+                                innerCol.Item().Text($"{_data.ClientName}");
+                                innerCol.Item().Text($"{_data.ClientDocument}");
+                                innerCol.Item().Text($"{_data.ClientEmail}");
+                                innerCol.Item().Text($"{_data.ClientPhone}");
                             });
 
                         // Línea divisoria vertical
@@ -298,10 +301,11 @@ namespace Application.Services
                             .Column(innerCol =>
                             {
                                 innerCol.Item().Text("Datos de la Empresa")?.FontSize(14).Bold();
-                                innerCol.Item().Text("Mi Empresa S.A.");
-                                innerCol.Item().Text("NIT: 800123456-7");
-                                innerCol.Item().Text("Dirección: Calle Ficticia 123");
-                                innerCol.Item().Text("Tel: 300 123 4567");
+                                innerCol.Item().Text(" ");
+                                innerCol.Item().Text($"{_datosEmpresa.Nombre}");
+                                innerCol.Item().Text($"{_datosEmpresa.Nit}");
+                                innerCol.Item().Text($"{_datosEmpresa.Direccion}");
+                                innerCol.Item().Text($"{_datosEmpresa.Celular}");
                             });
                     });
 
@@ -343,46 +347,81 @@ namespace Application.Services
 
                     col.Item().PaddingTop(20);
 
-                    col.Item().AlignRight().Column(inner =>
+                    col.Item().AlignLeft().Column(inner =>
                     {
                         // Bloque IVA
                         inner.Item().Width(230)
-                            .Background(Colors.Grey.Lighten3)
+                            .Background(Colors.White)
                             .Padding(10)
                             .Table(table =>
                             {
                                 table.ColumnsDefinition(columns =>
                                 {
-                                    columns.RelativeColumn(2);
-                                    columns.RelativeColumn(2);
+                                    columns.RelativeColumn(1);
+                                    columns.RelativeColumn(1);
                                     columns.RelativeColumn(3);
+                                });
+
+                                table.Cell().Element(CellStyle).Text("").Bold();
+                                table.Cell().Element(CellStyle).AlignLeft().Text("").Bold();
+                                table.Cell().Element(CellStyle).AlignLeft().Text("").Bold();
+                            });
+
+                    });
+
+                    col.Item().Row(row =>
+                    {
+                        // Columna izquierda: Forma de Pago
+                        row.ConstantColumn(230).Background(Colors.White).Padding(10).Table(table =>
+                        {
+                            table.ColumnsDefinition(c =>
+                            {
+                                c.RelativeColumn(2);
+                                c.RelativeColumn(2);
+                            });
+
+                            table.Cell().Element(CellStyle).Text("Forma de Pago:").Bold();
+                            table.Cell().Element(CellStyle).Text($"{_data.PaymentMethod}"); // o como sea que lo quieras mostrar
+                        });
+
+                        // Espacio opcional entre columnas
+                        row.RelativeColumn();
+
+                        // Columna derecha: Totales
+                        row.ConstantColumn(230).AlignRight().Column(inner =>
+                        {
+                            // Bloque IVA
+                            inner.Item().Background(Colors.Grey.Lighten3).Padding(10).Table(table =>
+                            {
+                                table.ColumnsDefinition(c =>
+                                {
+                                    c.RelativeColumn(1);
+                                    c.RelativeColumn(1);
+                                    c.RelativeColumn(3);
                                 });
 
                                 table.Cell().Element(CellStyle).Text("Iva:").Bold();
                                 table.Cell().Element(CellStyle).AlignRight().Text("19%").Bold();
-                                table.Cell().Element(CellStyle).AlignRight().Text($"{_data.TotalAmount:C}").Bold();
+                                table.Cell().Element(CellStyle).AlignRight().Text($"{_data.TotalIva:C}").Bold();
                             });
 
-                        // Espaciado
-                        inner.Item().Height(5);
+                            inner.Item().Height(5);
 
-                        // Bloque Total
-                        inner.Item().Width(230)
-                            .Background(Colors.Grey.Lighten3)
-                            .Padding(10)
-                            .Table(table =>
+                            // Bloque Total
+                            inner.Item().Background(Colors.Grey.Lighten3).Padding(10).Table(table =>
                             {
-                                table.ColumnsDefinition(columns =>
+                                table.ColumnsDefinition(c =>
                                 {
-                                    columns.RelativeColumn(1);
-                                    columns.RelativeColumn(1);
-                                    columns.RelativeColumn(3);
+                                    c.RelativeColumn(1);
+                                    c.RelativeColumn(1);
+                                    c.RelativeColumn(3);
                                 });
 
                                 table.Cell().Element(CellStyle).Text("Total:").Bold();
                                 table.Cell().Element(CellStyle).AlignRight().Text("").Bold();
                                 table.Cell().Element(CellStyle).AlignRight().Text($"{_data.TotalAmount:C}").FontColor(Colors.Green.Darken2).Bold();
                             });
+                        });
                     });
                     static IContainer CellStyle(IContainer container) =>
                     container.PaddingVertical(2).PaddingHorizontal(5);
@@ -391,13 +430,18 @@ namespace Application.Services
                 // FOOTER
                 page.Footer().Column(col =>
                 {
+                    col.Item().PaddingTop(5).AlignCenter().Text($"{_datosEmpresa.Nombre}").FontSize(8);
+                    col.Item().PaddingTop(5).AlignCenter().Text($"{_datosEmpresa.Direccion}").FontSize(8);
+                    col.Item().PaddingTop(5).AlignCenter().Text($"{_datosEmpresa.Correo}").FontSize(8);
+                    col.Item().PaddingTop(5).AlignCenter().Text($"{_datosEmpresa.Celular}").FontSize(8);
 
-                    col.Item().AlignCenter().PaddingTop(10).Column(info =>
-                    {
-                        info.Item().Text("Mi Empresa S.A.").FontSize(8);
-                        info.Item().Text("Dirección: Calle Ficticia 123").FontSize(8);
-                        info.Item().Text("Tel: 300 123 4567").FontSize(8);
-                    });
+                    //col.Item().AlignCenter().PaddingTop(10).Column(info =>
+                    //{
+                    //    info.Item().AlignCenter().Text($"{_datosEmpresa.Nombre}").FontSize(8);
+                    //    info.Item().AlignCenter().Text($"{_datosEmpresa.Direccion}").FontSize(8);
+                    //    info.Item().AlignCenter().Text($"{_datosEmpresa.Correo}").FontSize(8);
+                    //    info.Item().AlignCenter().Text($"{_datosEmpresa.Celular}").FontSize(8);
+                    //});
                 });
             });
         }
