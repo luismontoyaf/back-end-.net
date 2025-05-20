@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Infrastructure.Data;
 using Infrastructure.Services;
 using Application.Services;
-using BackendApp.Services; // Eliminar esta línea
 using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +40,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IInfoRepository, InfoRepository>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Registrar los servicios
 builder.Services.AddScoped<UserService>();
@@ -48,6 +50,7 @@ builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<InfoService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<SaleService>();
 
 // Add services to the container.
 builder.Services.AddControllers();

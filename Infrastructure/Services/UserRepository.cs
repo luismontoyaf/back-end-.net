@@ -4,7 +4,7 @@ using Microsoft.Data.SqlClient;
 using Infrastructure.Data;
 using Core.Interfaces;
 using BCrypt.Net;
-
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services
 {
@@ -54,28 +54,6 @@ namespace Infrastructure.Services
 
             return null; // Si el usuario no existe, devolvemos null
         }
-
-        //public bool ValidateUser(string username, string password)
-        //{
-        //    bool isValid = false;
-        //    using (SqlConnection connection = new SqlConnection(_connectionString))
-        //    {
-        //        string query = "SELECT COUNT(*) FROM Usuarios WHERE Correo = @Username AND Contrasena = @Password";
-
-        //        using (SqlCommand command = new SqlCommand(query, connection))
-        //        {
-        //            command.Parameters.AddWithValue("@Username", username);
-        //            command.Parameters.AddWithValue("@Password", password);
-
-        //            connection.Open();
-        //            int count = (int)command.ExecuteScalar();
-        //            isValid = count > 0;
-        //        }
-        //    }
-
-        //    return isValid;
-        //}
-
         public bool ValidateUser(string username, string password)
         {
             string hashedPasswordFromDb = null;
@@ -116,6 +94,11 @@ namespace Infrastructure.Services
         {
             _context.Usuarios.Add(employe);
             return _context.SaveChanges() > 0;
+        }
+
+        Task<Client> IUserRepository.GetClientByDocumentAsync(string document)
+        {
+            return _context.Clientes.FirstOrDefaultAsync(c => c.numDocumento == document);
         }
     }
 }

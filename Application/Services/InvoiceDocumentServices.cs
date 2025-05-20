@@ -258,7 +258,7 @@ namespace Application.Services
                         .Column(col =>
                         {
                             col.Item().Text("Factura de Venta").FontSize(20).Bold();
-                            col.Item().Text($"N° Factura: 0001");
+                            col.Item().Text($"N° Factura: {_data.InvoiceNumber}");
                             col.Item().Text($"Fecha: {DateTime.Now:dd/MM/yyyy}");
                         });
 

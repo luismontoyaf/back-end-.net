@@ -7,7 +7,7 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Microsoft.EntityFrameworkCore;
 using Infrastructure.Data;
 
-namespace BackendApp.Services
+namespace Infrastructure.Services
 {
     public class InfoRepository : IInfoRepository
     {

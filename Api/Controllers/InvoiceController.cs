@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Core.Models;
-using BackendApp.Services;
+using Infrastructure.Services;
 using Application.Services;
 using Infrastructure.Data;
 using QuestPDF.Fluent;
 using Newtonsoft.Json;
-using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
+using Core.Interfaces;
 
 
 namespace BackendApp.Controllers
@@ -17,16 +17,20 @@ namespace BackendApp.Controllers
     {
         private readonly InvoiceRepository _repository;
         private readonly InfoRepository _infoRepository;
+        private readonly ISaleRepository _saleRepository;
+        private readonly IUserRepository _userRepository;
         private readonly InvoiceService _invoiceService;
         private readonly EmailService _emailService;
 
-        public InvoiceController(InvoiceService infoService, EmailService emailService, AppDbContext context)
+        public InvoiceController(InvoiceService infoService, EmailService emailService, IUserRepository userRepository, ISaleRepository saleRepository, AppDbContext context)
         {
             // Cadena de conexión (puedes moverla a configuración)
             string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
 
             _repository = new InvoiceRepository(connectionString, context);
             _infoRepository = new InfoRepository(connectionString, context);
+            _userRepository = userRepository;
+            _saleRepository = saleRepository;
             _invoiceService = infoService;
             _emailService = emailService;
         }
@@ -37,6 +41,10 @@ namespace BackendApp.Controllers
             if (request == null || request.Items == null || !request.Items.Any())
                 return BadRequest("Datos inválidos");
 
+            var client = await _userRepository.GetClientByDocumentAsync(request.ClientDocument);
+
+            var invoice = await _saleRepository.GetInvoiceByClientId(client.Id);
+
             string nombreEmpresa = _infoRepository.GetParameterByName("NOMBRE_EMPRESA");
 
             var datosEmpresaJson = _infoRepository.GetParameterByName("DATOS_BASICOS_EMPRESA");
@@ -46,7 +54,7 @@ namespace BackendApp.Controllers
             // Deserializa el JSON
             var datosEmpresaObj = JsonConvert.DeserializeObject<DatosEmpresaWrapper>(datosEmpresaJson);
 
-            var tipoDocumento = request.ClientTypeDocument;
+            var tipoDocumento = client.tipoDocumento;
 
             var tipoDocumentoMap = new Dictionary<string, string>
             {
@@ -73,17 +81,18 @@ namespace BackendApp.Controllers
 
             var invoiceData = new InvoiceData
             {
-                ClientName = request.ClientName,
-                ClientEmail = request.ClientEmail,
+                ClientName = client.nombre + " " + client.apellidos,
+                ClientEmail = client.correo,
                 ClientTypeDocument = siglasDocumento,
-                ClientDocument = request.ClientDocument,
-                ClientPhone = request.ClientPhone,
+                ClientDocument = client.numDocumento,
+                ClientPhone = client.celular,
                 Items = request.Items.Select(i => new InvoiceItem
                 {
                     ProductName = i.ProductName,
                     Quantity = i.Quantity,
                     UnitPrice = i.UnitPrice
                 }).ToList(),
+                InvoiceNumber = invoice.NumeroFactura,
                 PaymentMethod = request.PaymentMethod,
                 TotalIva = total * valorIva, //IVA del 19%
                 TotalAmount = total

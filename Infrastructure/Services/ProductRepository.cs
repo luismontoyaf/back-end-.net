@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.JsonPatch;
 
-namespace BackendApp.Services
+namespace Infrastructure.Services
 {
     public class ProductRepository : IProductRepository
     {

@@ -6,7 +6,7 @@ using Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Infrastructure.Data;
 
-namespace BackendApp.Services
+namespace Infrastructure.Services
 {
     public class InvoiceRepository : IInvoiceRepository
     {

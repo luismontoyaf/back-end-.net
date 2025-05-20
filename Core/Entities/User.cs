@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Core.Models
 {
- public class Client
+    public class Client
     {
 
         [Key] 

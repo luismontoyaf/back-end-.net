@@ -2,10 +2,10 @@
 {
     public class InvoiceRequest
     {
-        public string ClientName { get; set; }
-        public string ClientEmail { get; set; }
-        public string ClientPhone { get; set; }
-        public string ClientTypeDocument { get; set; }
+        //public string ClientName { get; set; }
+        //public string ClientEmail { get; set; }
+        //public string ClientPhone { get; set; }
+        //public string ClientTypeDocument { get; set; }
         public string ClientDocument { get; set; }
         public string PaymentMethod { get; set; }
         public List<InvoiceItem> Items { get; set; }
@@ -20,6 +20,8 @@
         public string ClientDocument { get; set; }
         public string PaymentMethod { get; set; }
         public List<InvoiceItem> Items { get; set; }
+
+        public string? InvoiceNumber { get; set; }
         public decimal TotalIva { get; set; }
         public decimal TotalAmount { get; set; }
     }
