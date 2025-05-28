@@ -69,6 +69,5 @@ namespace BackendApp.Controllers
             string parameterValue = _repository.GetParameter(info);
             return Ok(parameterValue); // Devuelve los productos en JSON
         }
-
     }
 }

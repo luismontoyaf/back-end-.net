@@ -14,11 +14,12 @@ namespace Infrastructure.Data
             _context = context;
             Ventas = new SaleRepository(context);
             Clientes = new UserRepository(connectionString, context);
+            Usuarios = new UserRepository(connectionString, context);
         }
 
         public ISaleRepository Ventas { get; }
         public IUserRepository Clientes { get; }
-
+        public IUserRepository Usuarios { get; }
         public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 }

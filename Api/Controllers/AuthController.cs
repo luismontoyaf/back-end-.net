@@ -39,7 +39,7 @@ namespace BackendApp.Controllers
             return Unauthorized(new { Message = "Usuario o contraseña incorrectos" });
         }
 
-        private string GenerateJwtToken(Employe user)
+        private string GenerateJwtToken(EmployeDto user)
         {
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
@@ -51,7 +51,7 @@ namespace BackendApp.Controllers
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // Agrega el ID del usuario
                 new Claim(ClaimTypes.Name, user.nombre),
                 new Claim(ClaimTypes.Email, user.correo), // Agrega el email
-                new Claim(ClaimTypes.Role, user.rol) // Agrega el rol del usuario
+                new Claim(ClaimTypes.Role, user.rol.ToString()) // Agrega el rol del usuario
             };
 
             var token = new JwtSecurityToken(

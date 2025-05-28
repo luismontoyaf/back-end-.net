@@ -5,6 +5,7 @@ using Infrastructure.Data;
 using Core.Interfaces;
 using BCrypt.Net;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.JsonPatch;
 
 namespace Infrastructure.Services
 {
@@ -19,7 +20,7 @@ namespace Infrastructure.Services
             _context = context;
         }
 
-        public Employe GetUserByEmail(string email)
+        public EmployeDto GetUserByEmail(string email)
         {
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
@@ -33,7 +34,7 @@ namespace Infrastructure.Services
                     {
                         if (reader.Read())
                         {
-                            return new Employe
+                            return new EmployeDto
                             {
                                 Id = reader.GetInt32(0),
                                 nombre = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
@@ -99,6 +100,38 @@ namespace Infrastructure.Services
         Task<Client> IUserRepository.GetClientByDocumentAsync(string document)
         {
             return _context.Clientes.FirstOrDefaultAsync(c => c.numDocumento == document);
+        }
+
+        Task<List<EmployeDto>> IUserRepository.GetUsers()
+        {
+            return _context.Usuarios.Select(u => new EmployeDto
+            {
+                Id = u.Id,
+                nombre = u.nombre,
+                apellidos = u.apellidos,
+                tipoDocumento = u.tipoDocumento,
+                numDocumento = u.numDocumento,
+                correo = u.correo,
+                fechaNacimiento = u.fechaNacimiento,
+                fechaIngreso = u.fechaIngreso,
+                rol = u.rol.ToString(), // <- conversión explícita
+                estado = u.estado,
+                contrasena = u.contrasena,
+                celular = u.celular,
+                direccion = u.direccion,
+                genero = u.genero,
+                clienteId = u.clienteId
+            }).ToListAsync();
+        }
+
+        async Task<Employe?> IUserRepository.GetUserByIdAsync(int id)
+        {
+            return await _context.Usuarios.FindAsync(id);
+        }
+
+        void IUserRepository.Update(Employe user)
+        {
+            _context.Usuarios.Update(user); // Marca todo como modificado
         }
     }
 }

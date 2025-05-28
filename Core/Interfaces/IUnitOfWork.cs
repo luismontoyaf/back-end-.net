@@ -6,6 +6,7 @@ namespace Core.Interfaces
     {
         ISaleRepository Ventas { get; }
         IUserRepository Clientes { get; }
+        IUserRepository Usuarios { get; }
         Task<int> SaveChangesAsync();
     }
 }
