@@ -12,6 +12,7 @@ namespace Infrastructure.Data
         public required DbSet<Employe> Usuarios { get; set; }
         public required DbSet<Product> Productos { get; set; }
         public required DbSet<Sale> Ventas { get; set; }
+        public DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -29,6 +30,18 @@ namespace Infrastructure.Data
                 entity.Property(e => e.JsonFactura).HasColumnName("JSON_FACTURA");
                 entity.Property(e => e.FormaPago).HasColumnName("FORMA_PAGO");
                 entity.Property(e => e.FechaCreacion).HasColumnName("FECHA_CREACION").HasDefaultValueSql("GETDATE()").ValueGeneratedOnAdd();
+            });
+
+            modelBuilder.Entity<UserRefreshToken>(entity =>
+            {
+                entity.ToTable("UserRefreshTokens");
+
+                entity.HasKey(e => e.IdRefreshToken);
+
+                entity.Property(e => e.IdRefreshToken).HasColumnName("ID_REFRESH_TOKEN");
+                entity.Property(e => e.UserId).HasColumnName("USER_ID");
+                entity.Property(e => e.Token).HasColumnName("TOKEN");
+                entity.Property(e => e.ExpiryDate).HasColumnName("EXPIRY_DATE");
             });
         }
     }

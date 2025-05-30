@@ -11,5 +11,8 @@ namespace Core.Interfaces
         Task<List<EmployeDto>> GetUsers();
         Task<Employe?> GetUserByIdAsync(int id);
         void Update(Employe user);
+        Task SaveRefreshTokenAsync(int userId, string refreshToken, DateTime expiryDate);
+        Task<UserRefreshToken?> GetRefreshTokenAsync(string refreshToken);
+        Task DeleteRefreshTokenAsync(string refreshToken);
     }
 }

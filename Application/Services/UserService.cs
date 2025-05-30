@@ -134,6 +134,24 @@ namespace Application.Services
             return typeUserInt;
         }
 
+        public string ConvertTypeUser(int typeUser)
+        {
+            var typeUserString = "";
+            switch (typeUser)
+            {
+                case 1:
+                    typeUserString = "Administrador";
+                    break;
+                case 2:
+                    typeUserString = "Cliente";
+                    break;
+                default:
+                    typeUserString = "Colaborador";
+                    break;
+            }
+            return typeUserString;
+        }
+
         private string HashPassword(string password)
         {
             return BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);

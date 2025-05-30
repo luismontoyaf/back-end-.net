@@ -133,5 +133,36 @@ namespace Infrastructure.Services
         {
             _context.Usuarios.Update(user); // Marca todo como modificado
         }
+
+        public async Task SaveRefreshTokenAsync(int userId, string refreshToken, DateTime expiryDate)
+        {
+            var token = new UserRefreshToken
+            {
+                UserId = userId,
+                Token = refreshToken,
+                ExpiryDate = expiryDate
+            };
+
+            _context.UserRefreshTokens.Add(token);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<UserRefreshToken?> GetRefreshTokenAsync(string refreshToken)
+        {
+            return await _context.UserRefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+        }
+
+        public async Task DeleteRefreshTokenAsync(string refreshToken)
+        {
+            var token = await _context.UserRefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+            if (token != null)
+            {
+                _context.UserRefreshTokens.Remove(token);
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }
