@@ -16,7 +16,7 @@ namespace Application.Services
         public async Task SaveSaleAsync(InvoiceRequest request)
         {
             // 1. Obtener el cliente por documento  
-            var cliente = await _unitOfWork.Clientes.GetClientByDocumentAsync(request.ClientDocument);
+            var cliente = await _unitOfWork.Clientes.GetClientByDocumentAsync(request.idClient);
             if (cliente == null) throw new Exception("Cliente no encontrado");
 
             // 2. Calcular total  

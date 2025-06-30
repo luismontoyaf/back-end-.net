@@ -7,7 +7,8 @@ namespace Core.Interfaces
         bool ValidateUser(string username, string password);
         bool CreateUser(Client client);
         bool CreateEmploye(Employe employe);
-        Task<Client> GetClientByDocumentAsync(string id);
+        Task<Client> GetClientByDocumentAsync(int id);
+        Task<List<Client>> GetAllClientsAsync();
         Task<List<EmployeDto>> GetUsers();
         Task<Employe?> GetUserByIdAsync(int id);
         void Update(Employe user);

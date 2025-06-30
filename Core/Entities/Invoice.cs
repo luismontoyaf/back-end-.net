@@ -6,7 +6,8 @@
         //public string ClientEmail { get; set; }
         //public string ClientPhone { get; set; }
         //public string ClientTypeDocument { get; set; }
-        public string ClientDocument { get; set; }
+        public string? ClientDocument { get; set; }
+        public int idClient { get; set; }
         public string PaymentMethod { get; set; }
         public List<InvoiceItem> Items { get; set; }
     }

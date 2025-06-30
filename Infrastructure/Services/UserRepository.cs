@@ -97,9 +97,14 @@ namespace Infrastructure.Services
             return _context.SaveChanges() > 0;
         }
 
-        Task<Client> IUserRepository.GetClientByDocumentAsync(string document)
+        Task<Client> IUserRepository.GetClientByDocumentAsync(int id)
         {
-            return _context.Clientes.FirstOrDefaultAsync(c => c.numDocumento == document);
+            return _context.Clientes.FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        Task<List<Client>> IUserRepository.GetAllClientsAsync()
+        {
+            return _context.Clientes.ToListAsync();
         }
 
         Task<List<EmployeDto>> IUserRepository.GetUsers()

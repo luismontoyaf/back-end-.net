@@ -41,5 +41,10 @@ namespace Infrastructure.Services
             return client;
         }
 
+        public async Task<List<Sale>> GetAllInvoices ()
+        {
+            return await _context.Ventas.ToListAsync();
+        }
+
     }
 }

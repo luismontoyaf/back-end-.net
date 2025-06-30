@@ -41,7 +41,7 @@ namespace BackendApp.Controllers
             if (request == null || request.Items == null || !request.Items.Any())
                 return BadRequest("Datos inválidos");
 
-            var client = await _userRepository.GetClientByDocumentAsync(request.ClientDocument);
+            var client = await _userRepository.GetClientByDocumentAsync(request.idClient);
 
             var invoice = await _saleRepository.GetInvoiceByClientId(client.Id);
 
@@ -107,6 +107,14 @@ namespace BackendApp.Controllers
 
             return File(pdfStream.ToArray(), "application/pdf", "factura.pdf");
             //return Ok("Factura enviada exitosamente.");
+        }
+
+        [HttpGet("GetAllInvoices")]
+        public async Task<IActionResult> GetInvoices()
+            {
+            var result = await _invoiceService.GetListInvoices();
+
+            return Ok(result);
         }
 
 
