@@ -30,5 +30,13 @@ namespace Infrastructure.Services
             return sale ?? throw new InvalidOperationException("No se encontró una factura para el cliente especificado.");
         }
 
+        public async Task<Sale> GetInvoiceByInvoiceNumber(string numFactura)
+        {
+            var sale = await _context.Ventas
+            .Where(v => v.NumeroFactura == numFactura)
+            .FirstOrDefaultAsync();
+
+            return sale ?? throw new InvalidOperationException("No se encontró una factura para el cliente especificado.");
+        }
     }
 }
