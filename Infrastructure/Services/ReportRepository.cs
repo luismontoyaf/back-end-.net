@@ -9,12 +9,12 @@ using Microsoft.AspNetCore.JsonPatch;
 
 namespace Infrastructure.Services
 {
-    public class ReportRepository : IReportRepository
+    public class ProductRepository : IProductRepository
     {
         private readonly string _connectionString;
         private readonly AppDbContext _context;
 
-        public ReportRepository(string connectionString, AppDbContext context)
+        public ProductRepository(string connectionString, AppDbContext context)
         {
             _connectionString = connectionString;
             _context = context;
@@ -80,6 +80,37 @@ namespace Infrastructure.Services
 
             return products;
         }
+
+        public Product GetProductById(int id)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                string query = "SELECT Id, NombreProducto, Descripcion, Precio, Stock FROM Productos WHERE Id = @Id";
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@Id", id);
+                    connection.Open();
+
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return new Product
+                            {
+                                Id = reader.GetInt32(0),
+                                nombreProducto = reader.GetString(1),
+                                descripcion = reader.GetString(2),
+                                precio = reader.GetDecimal(3),
+                                stock = reader.GetInt32(4)
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null; // Si el usuario no existe, devolvemos null
+        }
+
         public Boolean AddProduct(Product product)
         {
             // 1. Insertar el producto en la tabla 'Productos'
@@ -150,6 +181,97 @@ namespace Infrastructure.Services
                 }
             }
         }
+
+        public void EditProduct(Product product, JsonPatchDocument<Product> patchDoc)
+        {
+            foreach (var operation in patchDoc.Operations)
+            {
+                var propertyName = operation.path.TrimStart('/');
+
+                // Marca solo las propiedades modificadas
+                _context.Entry(product).Property(propertyName).IsModified = true;
+            }
+
+            _context.SaveChanges();
+        }
+
+        //public Boolean EditProduct(Product product)
+        //{
+        //    // 1. Insertar el producto en la tabla 'Productos'
+        //    using (SqlConnection connection = new SqlConnection(_connectionString))
+        //    {
+        //        connection.Open();
+
+        //        // Iniciar una transacción para asegurar que ambos inserts sean atómicos
+        //        using (var transaction = connection.BeginTransaction())
+        //        {
+        //            try
+        //            {
+        //                // Insertar producto en la tabla Productos
+        //                string insertProductQuery = @"
+        //                    UPDATE Productos 
+        //                    SET NombreProducto = @NombreProducto, 
+        //                        Descripcion = @Descripcion, 
+        //                        Stock = @Stock, 
+        //                        Precio = @Precio
+        //                    OUTPUT INSERTED.Id
+        //                    WHERE Id = @Id";
+
+        //                int productId;
+
+        //                using (var command = new SqlCommand(insertProductQuery, connection, transaction))
+        //                {
+        //                    command.Parameters.AddWithValue("@NombreProducto", product.nombreProducto);
+        //                    command.Parameters.AddWithValue("@Descripcion", product.descripcion);
+        //                    command.Parameters.AddWithValue("@Stock", product.stock);
+        //                    command.Parameters.AddWithValue("@Precio", product.precio);
+        //                    command.Parameters.AddWithValue("@Id", product.Id);
+
+        //                    // Ejecutar la consulta y obtener el Id del producto insertado
+        //                    productId = (int)command.ExecuteScalar();
+        //                }
+
+        //                // 2. Insertar imagen en la tabla 'ImagenesProducto'
+        //                if (product.ImagenFile != null && product.ImagenFile.Length > 0)
+        //                {
+        //                    using (var memoryStream = new MemoryStream())
+        //                    {
+        //                        // Leer el archivo de la imagen en un stream de memoria
+        //                        product.ImagenFile.CopyTo(memoryStream);
+        //                        byte[] imageBytes = memoryStream.ToArray();
+
+        //                        // Insertar la imagen en la tabla ImagenesProducto
+        //                        string insertImageQuery = @"
+        //                            UPDATE ImagenesProducto 
+        //                            SET NombreImagen=@NombreImagen, 
+        //                            Imagen=@Imagen
+        //                            WHERE ProductoId=@ProductoId";
+
+        //                        using (var command = new SqlCommand(insertImageQuery, connection, transaction))
+        //                        {
+        //                            command.Parameters.AddWithValue("@ProductoId", productId);
+        //                            command.Parameters.AddWithValue("@NombreImagen", product.ImagenFile.FileName);
+        //                            command.Parameters.AddWithValue("@Imagen", imageBytes);
+
+        //                            command.ExecuteNonQuery();
+        //                        }
+        //                    }
+        //                }
+
+        //                // Commit de la transacción si ambos inserts fueron exitosos
+        //                transaction.Commit();
+        //                return true;
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                // Si algo falla, hacer rollback de la transacción
+        //                transaction.Rollback();
+        //                Console.WriteLine(ex.Message);
+        //                return false;
+        //            }
+        //        }
+        //    }
+        //}
 
     }
 }

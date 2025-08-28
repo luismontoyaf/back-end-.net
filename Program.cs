@@ -41,6 +41,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IInfoRepository, InfoRepository>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -51,6 +52,7 @@ builder.Services.AddScoped<InfoService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<SaleService>();
+builder.Services.AddScoped<ReportService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
