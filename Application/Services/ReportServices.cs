@@ -22,12 +22,12 @@ namespace Application.Services
 
         public async Task<string> GetReport(int id, string startDate = null, string endDate= null)
         {
-            string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
-            var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(connectionString);
 
                 var sql = "EXEC [dbo].[sp_GenerateSystemReport] @Id, @StartDate, @EndDate";
-                var cmd = _context.Database.GetDbConnection().CreateCommand();
+
+                using var cmd = _context.Database.GetDbConnection().CreateCommand();
                 cmd.CommandText = sql;
+
                 cmd.Parameters.Add(new SqlParameter("@Id", id));
 
                 DateTime? start = !string.IsNullOrEmpty(startDate) ? DateTime.Parse(startDate) : (DateTime?)null;

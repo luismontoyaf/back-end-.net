@@ -19,9 +19,6 @@ namespace BackendApp.Controllers
             ISaleRepository saleRepository, 
             AppDbContext context)
         {
-            // Cadena de conexión (puedes moverla a configuración)
-            string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
-
             _invoiceService = infoService;
         }
 

@@ -47,22 +47,6 @@ namespace Infrastructure.Services
                                 byte[] buffer = (byte[])reader["Imagen"];
                                 imageBase64 = Convert.ToBase64String(buffer);
                             }
-                            //byte[]? buffer = null;
-
-                            //if (!reader.IsDBNull(5))
-                            //{
-                            //    long length = reader.GetBytes(5, 0, null, 0, 0);
-                            //    buffer = new byte[length];
-                            //    reader.GetBytes(5, 0, buffer, 0, (int)length);
-                            //}
-
-                            //// Convertimos el byte[] en un FormFile
-                            //IFormFile? imageFile = null;
-                            //if (buffer != null)
-                            //{
-                            //    var stream = new MemoryStream(buffer);
-                            //    imageFile = new FormFile(stream, 0, buffer.Length, "imagen", "imagen.jpg");
-                            //}
 
                             products.Add(new Product
                             {

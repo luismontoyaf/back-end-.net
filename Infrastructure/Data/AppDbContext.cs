@@ -13,6 +13,7 @@ namespace Infrastructure.Data
         public required DbSet<Product> Productos { get; set; }
         public required DbSet<Sale> Ventas { get; set; }
         public DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
+        public required DbSet<Variant> Variants { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -42,6 +43,18 @@ namespace Infrastructure.Data
                 entity.Property(e => e.UserId).HasColumnName("USER_ID");
                 entity.Property(e => e.Token).HasColumnName("TOKEN");
                 entity.Property(e => e.ExpiryDate).HasColumnName("EXPIRY_DATE");
+            });
+
+            modelBuilder.Entity<Variant>(entity =>
+            {
+                entity.ToTable("VARIANTES");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("ID_VARIANTE");
+                entity.Property(e => e.Name).HasColumnName("NOMBRE_VARIANTE");
+                entity.Property(e => e.JsonValues).HasColumnName("JSON_VARIANTE");
+                entity.Property(e => e.State).HasColumnName("ESTADO");
             });
         }
     }

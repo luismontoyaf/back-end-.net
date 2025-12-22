@@ -28,7 +28,6 @@ namespace BackendApp.Controllers
         {
             string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
 
-            Console.WriteLine($"Connection String: {connectionString}");
             _userRepository = new UserRepository(connectionString, context);
             _userIRepository = iUserRepository;
             _userService = userService;
