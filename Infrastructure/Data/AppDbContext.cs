@@ -14,6 +14,7 @@ namespace Infrastructure.Data
         public required DbSet<Sale> Ventas { get; set; }
         public DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
         public required DbSet<Variant> Variants { get; set; }
+        public required DbSet<ImagenProducto> ImagenesProducto { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

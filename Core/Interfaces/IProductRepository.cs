@@ -7,5 +7,8 @@ namespace Core.Interfaces
     {
         bool AddProduct(Product product);
         void EditProduct(Product product, JsonPatchDocument<Product> patchDoc);
+        bool RemoveProduct(int id);
+        Product GetProductById(int id);
+        Task UpdateImageAsync(int productId, string nombreArchivo, byte[] imagenBytes);
     }
 }

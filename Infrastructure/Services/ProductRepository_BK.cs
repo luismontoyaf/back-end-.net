@@ -1,22 +1,20 @@
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
-using System.Diagnostics;
-using Core.Interfaces;
+using Microsoft.Data.SqlClient;
 using Core.Models;
+using Core.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.JsonPatch;
-using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services
 {
-    public class ProductRepository : IProductRepository
+    public class ReportRepository : IReportRepository
     {
         private readonly string _connectionString;
         private readonly AppDbContext _context;
 
-        public ProductRepository(string connectionString, AppDbContext context)
+        public ReportRepository(string connectionString, AppDbContext context)
         {
             _connectionString = connectionString;
             _context = context;
@@ -49,6 +47,22 @@ namespace Infrastructure.Services
                                 byte[] buffer = (byte[])reader["Imagen"];
                                 imageBase64 = Convert.ToBase64String(buffer);
                             }
+                            //byte[]? buffer = null;
+
+                            //if (!reader.IsDBNull(5))
+                            //{
+                            //    long length = reader.GetBytes(5, 0, null, 0, 0);
+                            //    buffer = new byte[length];
+                            //    reader.GetBytes(5, 0, buffer, 0, (int)length);
+                            //}
+
+                            //// Convertimos el byte[] en un FormFile
+                            //IFormFile? imageFile = null;
+                            //if (buffer != null)
+                            //{
+                            //    var stream = new MemoryStream(buffer);
+                            //    imageFile = new FormFile(stream, 0, buffer.Length, "imagen", "imagen.jpg");
+                            //}
 
                             products.Add(new Product
                             {
@@ -66,42 +80,6 @@ namespace Infrastructure.Services
 
             return products;
         }
-
-        public Product GetProductById(int id)
-        {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
-            {
-                string query = "SELECT P.Id, P.NombreProducto, P.Descripcion, P.Precio, P.Stock, P.Activo, I.Imagen " +
-                            "FROM Productos P INNER JOIN ImagenesProducto I ON P.Id = I.ProductoId WHERE P.Id = @Id";
-                using (SqlCommand command = new SqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@Id", id);
-                    connection.Open();
-
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            byte[] imagenBytes = (byte[])reader["Imagen"];
-
-                            return new Product
-                            {
-                                Id = reader.GetInt32(0),
-                                nombreProducto = reader.GetString(1),
-                                descripcion = reader.GetString(2),
-                                precio = reader.GetDecimal(3),
-                                stock = reader.GetInt32(4),
-                                activo = reader.GetBoolean(5) ? 1 : 0,
-                                ImagenBase64 = Convert.ToBase64String(imagenBytes)
-                            };
-                        }
-                    }
-                }
-            }
-
-            return null; // Si el usuario no existe, devolvemos null
-        }
-
         public Boolean AddProduct(Product product)
         {
             // 1. Insertar el producto en la tabla 'Productos'
@@ -171,82 +149,6 @@ namespace Infrastructure.Services
                     }
                 }
             }
-        }
-
-        public void EditProduct(Product product, JsonPatchDocument<Product> patchDoc)
-        {
-            foreach (var operation in patchDoc.Operations)
-            {
-                var propertyName = operation.path.TrimStart('/');
-
-                var prop = typeof(Product).GetProperty(propertyName);
-                if (prop == null) continue;
-
-                if (Attribute.IsDefined(prop, typeof(NotMappedAttribute)))
-                    continue;
-
-                // Marca solo las propiedades modificadas
-                _context.Entry(product).Property(propertyName).IsModified = true;
-            }
-
-            _context.SaveChanges();
-        }
-
-        public Boolean RemoveProduct(int id)
-        {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
-            {
-                connection.Open();
-
-                using (var transaction = connection.BeginTransaction())
-                {
-                    try
-                    {
-                        string deleteImagesQuery = @"
-                            DELETE FROM ImagenesProducto
-                            WHERE ProductoId = @ProductoId";
-
-                        using (var command = new SqlCommand(deleteImagesQuery, connection, transaction))
-                        {
-                            command.Parameters.AddWithValue("@ProductoId", id);
-                            command.ExecuteNonQuery();
-                        }
-
-                        string deleteProductQuery = @"
-                            DELETE FROM Productos
-                            WHERE Id = @Id";
-
-                        using (var command = new SqlCommand(deleteProductQuery, connection, transaction))
-                        {
-                            command.Parameters.AddWithValue("@Id", id);
-                            command.ExecuteNonQuery();
-                        }
-
-                        transaction.Commit();
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        transaction.Rollback();
-                        Debug.WriteLine(ex.Message);
-                        return false;
-                    }
-                }
-            }
-        }
-
-        public async Task UpdateImageAsync(int productId, string nombreArchivo, byte[] imagenBytes)
-        {
-            // Traer la imagen existente (siempre existe)
-            var imagenExistente = await _context.ImagenesProducto
-                .FirstAsync(i => i.ProductoId == productId);
-
-            // Actualizar los datos
-            imagenExistente.NombreImagen = nombreArchivo;
-            imagenExistente.Imagen = imagenBytes;
-
-            // EF ya trackea el objeto, solo SaveChangesAsync
-            await _context.SaveChangesAsync();
         }
 
     }

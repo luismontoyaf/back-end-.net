@@ -25,7 +25,7 @@ namespace Application.Services
             }
 
             GuardarImagen(producto.ImagenFile);
-            // Hash de la contraseña
+            
             producto.nombreProducto = producto.nombreProducto;
 
             // Llama al repositorio para guardar el usuario
@@ -59,7 +59,8 @@ namespace Application.Services
                 }
 
                 // Construir la ruta completa del archivo
-                var filePath = Path.Combine(_imageUploadPath, imagen.FileName);
+                var uniqueName = $"{Guid.NewGuid()}_{imagen.FileName}";
+                var filePath = Path.Combine(_imageUploadPath, uniqueName);
 
                 // Guardar el archivo
                 using (var stream = new FileStream(filePath, FileMode.Create))
@@ -67,6 +68,18 @@ namespace Application.Services
                     imagen.CopyTo(stream);
                 }
             }
+        }
+
+        public async Task UpdateProductImageAsync(int productId, IFormFile imagen)
+        {
+            if (imagen == null || imagen.Length == 0)
+                throw new ArgumentException("Imagen inválida");
+
+            using var ms = new MemoryStream();
+            await imagen.CopyToAsync(ms);
+            var imagenBytes = ms.ToArray();
+
+            await _productRepository.UpdateImageAsync(productId, imagen.FileName, imagenBytes);
         }
     }
 }

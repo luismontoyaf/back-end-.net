@@ -17,4 +17,19 @@ namespace Core.Models
         public IFormFile? ImagenFile { get; set; } // Para recibir archivos al agregar
         public int? activo { get; set; } = 1;
     }
+
+    public class ImagenProducto
+    {
+        [Key]
+        public int Id { get; set; }
+        public int ProductoId { get; set; }
+
+        [Required]
+        public string NombreImagen { get; set; } = null!;
+
+        [Required]
+        public byte[] Imagen { get; set; } = null!;
+
+        public Product Producto { get; set; } = null!;
+    }
 }
