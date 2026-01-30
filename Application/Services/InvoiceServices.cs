@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using QuestPDF.Fluent;
 using System.Globalization;
 using System.IO.Compression;
+using Microsoft.AspNetCore.Identity.UI.Services;
 
 namespace Application.Services
 {
@@ -17,6 +18,7 @@ namespace Application.Services
         private readonly InvoiceRepository _repository;
         private readonly ISaleRepository _saleRepository;
 
+        private readonly EmailService _emailService;
         private readonly string _imageUploadPath;
 
 
@@ -33,6 +35,8 @@ namespace Application.Services
             _userRepository = userRepository;
             _userRepository = userRepository;
             _saleRepository = saleRepository;
+            _emailService = emailService;
+
         }
 
         public async Task<List<Sale>> GetAllInvoicesAsync()
@@ -45,7 +49,7 @@ namespace Application.Services
             if (request == null || request.Items == null || !request.Items.Any())
                 throw new ArgumentException("Datos inválidos");
 
-            var client = await _userRepository.GetClientByDocumentAsync(request.idClient);
+            var client = await _userRepository.GetClientByIdAsync(request.idClient);
 
             var invoice = await _saleRepository.GetInvoiceByInvoiceNumber(request.numInvoice);
 
@@ -107,7 +111,11 @@ namespace Application.Services
             document.GeneratePdf(pdfStream);
             pdfStream.Position = 0;
 
-            //await _emailService.SendInvoiceEmailAsync(request.ClientEmail, request.ClientName, pdfStream, invoiceData);
+
+            if (invoiceData.ClientDocument != "222222222222" && request.sendEmail)
+            {
+                await _emailService.SendInvoiceEmailAsync(invoiceData.ClientEmail, invoiceData.ClientName, companyInfo.Nombre, companyInfo.Correo, pdfStream, invoiceData);
+            }
 
             return pdfStream.ToArray();
             //return Ok("Factura enviada exitosamente.");
@@ -123,7 +131,7 @@ namespace Application.Services
 
             foreach (var request in requests)
             {
-                var client = await _userRepository.GetClientByDocumentAsync(request.idClient);
+                var client = await _userRepository.GetClientByIdAsync(request.idClient);
 
                 var invoice = await _saleRepository.GetInvoiceByInvoiceNumber(request.numInvoice);
 

@@ -15,11 +15,13 @@ namespace BackendApp.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly SaleService _saleService;
+        private readonly InvoiceService _invoiceService;
 
-        public SaleController(IUnitOfWork unitOfWork, SaleService saleService)
+        public SaleController(IUnitOfWork unitOfWork, SaleService saleService, InvoiceService invoiceService)
         {
             _unitOfWork = unitOfWork;
             _saleService = saleService;
+            _invoiceService = invoiceService;
         }
 
         [HttpPost("saveSale")]
@@ -27,8 +29,26 @@ namespace BackendApp.Controllers
         {
             try
             {
-                await _saleService.SaveSaleAsync(request);
-                return Ok(new { message = "Venta guardada correctamente" });
+                var sale = await _saleService.SaveSaleAsync(request);
+
+                var newRequest = new InvoiceRequest
+                {
+                    ClientDocument = request.ClientDocument,
+                    numInvoice = sale.NumeroFactura,
+                    idClient = request.idClient,
+                    Items = request.Items,
+                    PaymentMethod = request.PaymentMethod,
+                    sendEmail = request.sendEmail
+                };
+
+                if (request.ClientDocument != "222222222222")
+                {
+                    await _invoiceService.GenerateIndividualInvoice(newRequest);
+                }
+
+                return Ok(new { message = "Venta guardada correctamente",
+                    invoiceNumber = sale.NumeroFactura
+                });
             }
             catch (Exception ex)
             {

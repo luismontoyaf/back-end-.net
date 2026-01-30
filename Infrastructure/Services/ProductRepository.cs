@@ -99,7 +99,40 @@ namespace Infrastructure.Services
                 }
             }
 
-            return null; // Si el usuario no existe, devolvemos null
+            return null;
+        }
+
+        public async Task<Product> GetProductByName(string productName)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                string query = "SELECT Id, NombreProducto, Descripcion, Precio, Stock, Activo " +
+                            "FROM Productos WHERE NombreProducto = @NombreProducto";
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@NombreProducto", productName);
+                    connection.Open();
+
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+
+                            return new Product
+                            {
+                                Id = reader.GetInt32(0),
+                                nombreProducto = reader.GetString(1),
+                                descripcion = reader.GetString(2),
+                                precio = reader.GetDecimal(3),
+                                stock = reader.GetInt32(4),
+                                activo = reader.GetBoolean(5) ? 1 : 0
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null;
         }
 
         public Boolean AddProduct(Product product)
@@ -233,6 +266,11 @@ namespace Infrastructure.Services
                     }
                 }
             }
+        }
+
+        public void Update(Product product)
+        {
+            _context.Productos.Update(product);
         }
 
         public async Task UpdateImageAsync(int productId, string nombreArchivo, byte[] imagenBytes)

@@ -9,6 +9,8 @@ namespace Core.Interfaces
         void EditProduct(Product product, JsonPatchDocument<Product> patchDoc);
         bool RemoveProduct(int id);
         Product GetProductById(int id);
+        Task<Product> GetProductByName(string nameProduct);
+        void Update(Product product);
         Task UpdateImageAsync(int productId, string nombreArchivo, byte[] imagenBytes);
     }
 }

@@ -16,7 +16,7 @@ namespace Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public bool RegisterUser(Client client)
+        public bool RegisterClient(Client client)
         {
             // Validación de reglas de negocio, como contraseñas que coincidan
             if (string.IsNullOrEmpty(client.nombre) || string.IsNullOrEmpty(client.celular))
@@ -27,7 +27,7 @@ namespace Application.Services
             client.estado = 1;
 
             // Llama al repositorio para guardar el usuario
-            return _userRepository.CreateUser(client);
+            return _userRepository.CreateClient(client);
         }
 
         public bool RegisterEmploye(EmployeDto employe)
@@ -49,7 +49,7 @@ namespace Application.Services
             // Llama al repositorio para guardar el usuario
             return _userRepository.CreateEmploye(new Employe
             {
-                Id = employe.Id ?? throw new("El id no puede ser nulo"),
+                //Id = employe.Id ?? throw new("El id no puede ser nulo"),
                 nombre = employe.nombre,
                 apellidos = employe.apellidos,
                 tipoDocumento = employe.tipoDocumento,
@@ -57,7 +57,7 @@ namespace Application.Services
                 correo = employe.correo,
                 fechaNacimiento = employe.fechaNacimiento,
                 fechaIngreso = employe.fechaIngreso ?? DateTime.Now,
-                rol = tipoUsuario, // Convertir de nuevo a string si es necesario
+                rol = tipoUsuario,
                 estado = 1,
                 contrasena = employe.contrasena,
                 celular = employe.celular,
@@ -113,6 +113,38 @@ namespace Application.Services
                 user.contrasena = HashPassword(userDto.contrasena.Trim()); // si usas hashing
 
             _unitOfWork.Usuarios.Update(user);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task UpdateClientAsync(ClientDto clientDto)
+        {
+            var client = await _unitOfWork.Clientes.GetClientByIdAsync(clientDto.Id ?? throw new("Id Nulo"));
+            if (client == null)
+                throw new Exception("Usuario no encontrado");
+
+            // Solo actualizar los campos no nulos
+            if (!string.IsNullOrWhiteSpace(clientDto.nombre))
+                client.nombre = clientDto.nombre;
+
+            if (!string.IsNullOrWhiteSpace(clientDto.apellidos))
+                client.apellidos = clientDto.apellidos;
+
+            if (!clientDto.fechaNacimiento.HasValue)
+                client.fechaNacimiento = clientDto.fechaNacimiento;
+
+            if (!string.IsNullOrWhiteSpace(clientDto.celular))
+                client.celular = clientDto.celular;
+
+            if (!string.IsNullOrWhiteSpace(clientDto.direccion))
+                client.direccion = clientDto.direccion;
+
+            if (!string.IsNullOrWhiteSpace(clientDto.genero))
+                client.genero = clientDto.genero;
+
+            //if (!string.IsNullOrWhiteSpace(clientDto.contrasena))
+            //    client.contrasena = HashPassword(clientDto.contrasena.Trim());
+
+            _unitOfWork.Clientes.UpdateClient(client);
             await _unitOfWork.SaveChangesAsync();
         }
 

@@ -1,12 +1,16 @@
-﻿namespace Core.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Core.Models
 {
     public class InvoiceRequest
     {
         public string? ClientDocument { get; set; }
         public int idClient { get; set; }
-        public string numInvoice { get; set; }
+
+        public string? numInvoice { get; set; }
         public string PaymentMethod { get; set; }
         public List<InvoiceItem> Items { get; set; }
+        public bool sendEmail { get; set; }
     }
 
     public class InvoiceData
@@ -26,6 +30,7 @@
 
     public class InvoiceItem
     {
+        public int? Id { get; set; }
         public string ProductName { get; set; }
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }

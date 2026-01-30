@@ -86,7 +86,7 @@ namespace Infrastructure.Services
             return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
         }
 
-        public bool CreateUser(Client client){
+        public bool CreateClient(Client client){
             _context.Clientes.Add(client);
             return _context.SaveChanges() > 0;
         }
@@ -97,7 +97,7 @@ namespace Infrastructure.Services
             return _context.SaveChanges() > 0;
         }
 
-        Task<Client> IUserRepository.GetClientByDocumentAsync(int id)
+        Task<Client> IUserRepository.GetClientByIdAsync(int id)
         {
             return _context.Clientes.FirstOrDefaultAsync(c => c.Id == id);
         }
@@ -137,6 +137,11 @@ namespace Infrastructure.Services
         void IUserRepository.Update(Employe user)
         {
             _context.Usuarios.Update(user); // Marca todo como modificado
+        }
+
+        void IUserRepository.UpdateClient(Client client)
+        {
+            _context.Clientes.Update(client); // Marca todo como modificado
         }
 
         public async Task SaveRefreshTokenAsync(int userId, string refreshToken, DateTime expiryDate)

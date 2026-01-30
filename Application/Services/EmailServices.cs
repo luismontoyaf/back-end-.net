@@ -1,41 +1,49 @@
-﻿using SendGrid;
-using SendGrid.Helpers.Mail;
+﻿using System.Globalization;
 using Core.Models;
+using Mailjet.Client;
+using Mailjet.Client.Resources;
+using Mailjet.Client.TransactionalEmails;
+using Newtonsoft.Json.Linq;
 
 namespace Application.Services
 {
     public class EmailService
     {
-        private readonly string _apiKey;
+        private readonly string _mailjetApiKey;
+        private readonly string _mailjetSecretKey;
 
         public EmailService(IConfiguration configuration)
         {
-            _apiKey = configuration["SendGrid:ApiKey"];
+            _mailjetApiKey = configuration["MAILJET_API_KEY"];
+            _mailjetSecretKey = configuration["MAILJET_SECRET_KEY"];
         }
 
-        public async Task SendInvoiceEmailAsync(string toEmail, string clientName, MemoryStream pdfStream, InvoiceData invoicedata)
+        public async Task SendInvoiceEmailAsync(string toEmail, string clientName, string companyName, string companyEmail, MemoryStream pdfStream, InvoiceData invoicedata)
         {
-            var client = new SendGridClient(_apiKey);
-            var from = new EmailAddress("tucorreo@dominio.com", "Tu Empresa");
-            var subject = "Factura de su compra";
-            var to = new EmailAddress(toEmail, clientName);
-            var plainTextContent = $"Hola {clientName}, adjuntamos la factura de su compra. ¡Gracias por confiar en nosotros!";
-            var htmlContent = $"<strong>Hola {clientName}</strong><br>Adjuntamos la factura de su compra.<br><br>Gracias por confiar en nosotros.";
+            var client = new MailjetClient(_mailjetApiKey, _mailjetSecretKey);
 
-            var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
-
-            // Adjuntar PDF
+            // Convertir PDF a Base64
+            pdfStream.Position = 0;
             var pdfBytes = pdfStream.ToArray();
             var pdfBase64 = Convert.ToBase64String(pdfBytes);
 
-            msg.AddAttachment("factura.pdf", pdfBase64, "application/pdf");
+            var attachment = new Attachment("factura.pdf", "application/pdf", pdfBase64);
 
-            var response = await client.SendEmailAsync(msg);
+            // Construir el correo
+            var email = new TransactionalEmailBuilder() 
+            .WithFrom(new SendContact(companyEmail, companyName)) 
+            .WithSubject("Factura de compra") .WithTextPart($"Hola {clientName}, adjuntamos la factura de su compra.")
+            .WithHtmlPart($"<strong>Hola {clientName}</strong><br>Adjuntamos la factura de su compra.") 
+            .WithTo(new SendContact(toEmail, clientName)) 
+            .WithAttachment(attachment) 
+            .Build();
 
-            if ((int)response.StatusCode >= 400)
+            // Enviar correo
+            var response = await client.SendTransactionalEmailAsync(email);
+
+            if (response.Messages[0].Status != "success")
             {
-                var body = await response.Body.ReadAsStringAsync();
-                throw new Exception($"Error enviando correo: {response.StatusCode} - {body}");
+                throw new Exception($"Error enviando correo: {response.Messages[0].Errors?[0].ErrorMessage}");
             }
         }
     }
