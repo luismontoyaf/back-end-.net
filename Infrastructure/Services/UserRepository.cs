@@ -163,16 +163,13 @@ namespace Infrastructure.Services
                 .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
         }
 
-        public async Task DeleteRefreshTokenAsync(string refreshToken)
+        public async Task DeleteRefreshTokenByUserAsync(int userId)
         {
-            var token = await _context.UserRefreshTokens
-                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            var tokens = _context.UserRefreshTokens
+                .Where(rt => rt.UserId == userId);
 
-            if (token != null)
-            {
-                _context.UserRefreshTokens.Remove(token);
-                await _context.SaveChangesAsync();
-            }
+             _context.UserRefreshTokens.RemoveRange(tokens);
+             await _context.SaveChangesAsync();
         }
     }
 }

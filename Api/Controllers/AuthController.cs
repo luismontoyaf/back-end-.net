@@ -34,16 +34,18 @@ namespace BackendApp.Controllers
         }
 
         [HttpPost("login")]
-         public IActionResult Login([FromBody] Core.Models.LoginRequest request)
+         public async Task<IActionResult> Login([FromBody] Core.Models.LoginRequest request)
         {
             var user = _userRepository.GetUserByEmail(request.Username);
             if (_userRepository.ValidateUser(request.Username, request.Password))
             {
+                await _userRepository.DeleteRefreshTokenByUserAsync(user.Id ?? throw new("Id no valido"));
+
                 var token = GenerateJwtToken(user);
                 var refreshToken = GenerateRefreshToken();
 
                 // Guardá el refresh token en base de datos o en memoria para asociarlo al usuario
-                _userRepository.SaveRefreshTokenAsync(user.Id ?? 0, refreshToken, DateTime.UtcNow.AddDays(7));
+                await _userRepository.SaveRefreshTokenAsync(user.Id ?? 0, refreshToken, DateTime.UtcNow.AddDays(7));
 
                 return Ok(new { 
                     Token = token,
@@ -57,7 +59,12 @@ namespace BackendApp.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] RefreshRequest request)
         {
-            await _userRepository.DeleteRefreshTokenAsync(request.RefreshToken);
+            var storedToken = await _userRepository.GetRefreshTokenAsync(request.RefreshToken);
+
+            if (storedToken != null)
+            {
+                await _userRepository.DeleteRefreshTokenByUserAsync(storedToken.UserId);
+            }
             return Ok(new { message = "Sesión cerrada correctamente" });
         }
 
@@ -91,15 +98,15 @@ namespace BackendApp.Controllers
             var newRefreshToken = GenerateRefreshToken();
 
             // Opcional: eliminar el anterior
-            await _userRepository.DeleteRefreshTokenAsync(request.RefreshToken);
+            await _userRepository.DeleteRefreshTokenByUserAsync(user.Id);
 
             // Guardar el nuevo
-            await _userRepository.SaveRefreshTokenAsync(user.Id, newRefreshToken, DateTime.UtcNow.AddDays(7));
+            await _userRepository.SaveRefreshTokenAsync(user.Id, newRefreshToken, DateTime.UtcNow.AddDays(1));
 
             return Ok(new
             {
-                Token = newJwt,
-                RefreshToken = newRefreshToken
+                token = newJwt,
+                refreshToken = newRefreshToken
             });
         }
 
@@ -122,7 +129,7 @@ namespace BackendApp.Controllers
                 issuer: "BackendApp",          
                 audience: "BackendAppUsuarios",
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(30),
+                expires: DateTime.UtcNow.AddMinutes(29),
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);

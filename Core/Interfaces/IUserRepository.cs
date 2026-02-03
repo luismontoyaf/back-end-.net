@@ -15,6 +15,6 @@ namespace Core.Interfaces
         void UpdateClient(Client client);
         Task SaveRefreshTokenAsync(int userId, string refreshToken, DateTime expiryDate);
         Task<UserRefreshToken?> GetRefreshTokenAsync(string refreshToken);
-        Task DeleteRefreshTokenAsync(string refreshToken);
+        Task DeleteRefreshTokenByUserAsync(int userId);
     }
 }
