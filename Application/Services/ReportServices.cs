@@ -23,28 +23,30 @@ namespace Application.Services
         public async Task<string> GetReport(int id, string startDate = null, string endDate= null)
         {
 
-                var sql = "EXEC [dbo].[sp_GenerateSystemReport] @Id, @StartDate, @EndDate";
+                var sql = "SELECT sp_generate_system_report(@reportId, @startDate, @endDate)";
 
                 using var cmd = _context.Database.GetDbConnection().CreateCommand();
                 cmd.CommandText = sql;
 
-                cmd.Parameters.Add(new SqlParameter("@Id", id));
+                cmd.Parameters.Add(new Npgsql.NpgsqlParameter("reportId", id));
 
                 DateTime? start = !string.IsNullOrEmpty(startDate) ? DateTime.Parse(startDate) : (DateTime?)null;
                 DateTime? end = !string.IsNullOrEmpty(endDate) ? DateTime.Parse(endDate) : (DateTime?)null;
 
-                cmd.Parameters.Add(new SqlParameter("@StartDate", start ?? (object)DBNull.Value));
-                cmd.Parameters.Add(new SqlParameter("@EndDate", end ?? (object)DBNull.Value));
+                cmd.Parameters.Add(new Npgsql.NpgsqlParameter("startDate", start ?? (object)DBNull.Value));
+                cmd.Parameters.Add(new Npgsql.NpgsqlParameter("endDate", end ?? (object)DBNull.Value));
 
                 await _context.Database.OpenConnectionAsync();
                 try
                 {
-                    using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
-                    {
-                        var dataTable = new DataTable();
-                        dataTable.Load(reader);
-                        return JsonConvert.SerializeObject(dataTable);
+                    using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection); 
+                    string jsonResult = null; 
+
+                    if (await reader.ReadAsync()) { 
+                        jsonResult = reader.GetString(0); 
                     }
+                    
+                    return jsonResult;
                 }
                 catch(Exception ex)
                 {

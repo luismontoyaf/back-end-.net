@@ -1,10 +1,11 @@
-using Microsoft.AspNetCore.Mvc;
-using Core.Models;
-using Infrastructure.Services;
 using Application.Services;
-using Infrastructure.Data;
 using Core.Interfaces;
+using Core.Models;
+using Infrastructure.Data;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 
 namespace BackendApp.Controllers
@@ -17,9 +18,9 @@ namespace BackendApp.Controllers
         private readonly IUserRepository _userIRepository;
         private readonly UserService _userService;
 
-        public UserController(UserService userService, IUserRepository iUserRepository, AppDbContext context)
+        public UserController(UserService userService, IUserRepository iUserRepository, AppDbContext context, IConfiguration configuration)
         {
-            string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
+            string connectionString = configuration.GetConnectionString("DefaultConnection");
 
             _userRepository = new UserRepository(connectionString, context);
             _userService = userService;

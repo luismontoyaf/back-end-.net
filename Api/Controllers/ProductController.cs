@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
-using Core.Models;
-using Infrastructure.Services;
 using Application.Services;
-using Microsoft.AspNetCore.JsonPatch;
+using Core.Models;
 using Infrastructure.Data;
+using Infrastructure.Services;
+using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace BackendApp.Controllers
 {
@@ -17,10 +18,10 @@ namespace BackendApp.Controllers
 
 
 
-        public ProductController(ProductService productService, AppDbContext context)
+        public ProductController(ProductService productService, AppDbContext context, IConfiguration configuration)
         {
             // Cadena de conexión (puedes moverla a configuración)
-            string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
+            string connectionString = configuration.GetConnectionString("DefaultConnection");
 
             _repository = new ProductRepository(connectionString, context);
             _productService = productService;

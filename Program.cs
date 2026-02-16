@@ -11,8 +11,15 @@ using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.UseUrls("http://0.0.0.0:5000");
+
 // Establecer tipo de licencia
 QuestPDF.Settings.License = LicenseType.Community;
+
+AppContext.SetSwitch(
+    "Npgsql.EnableLegacyTimestampBehavior",
+    true
+);
 
 // Configurar CORS
 builder.Services.AddCors(options =>
@@ -33,7 +40,7 @@ builder.Services.AddSingleton(connectionString);
 
 // Agrega el DbContext al contenedor de dependencias
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(connectionString));
 
 // Registrar UserRepository como implementación de IUserRepository
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -86,11 +93,11 @@ var app = builder.Build();
 app.UseCors("AllowAngularApp");
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+//if (app.Environment.IsDevelopment())
+//{
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+//}
 
 app.UseHttpsRedirection();
 
@@ -114,11 +121,11 @@ app.MapGet("/weatherforecast", () =>
 .WithName("GetWeatherForecast")
 .WithOpenApi();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
 
 app.UseAuthorization();
 app.MapControllers();

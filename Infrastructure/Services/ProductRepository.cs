@@ -1,13 +1,11 @@
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Data;
 using System.Diagnostics;
 using Core.Interfaces;
 using Core.Models;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.JsonPatch;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Infrastructure.Services
 {
@@ -26,19 +24,19 @@ namespace Infrastructure.Services
         {
             var products = new List<Product>();
 
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 string query = @"
-                SELECT p.Id, p.NombreProducto, p.Descripcion, p.Stock, p.Precio, i.Imagen
-                FROM Productos p
-                LEFT JOIN ImagenesProducto i ON p.Id = i.ProductoId
-                WHERE p.Activo = 1";
+                SELECT p.id, p.nombre_producto, p.descripcion, p.stock, p.precio, i.imagen
+                FROM productos p
+                LEFT JOIN imagenes_producto i ON p.id = i.producto_id
+                WHERE p.activo = true";
 
-                using (SqlCommand command = new SqlCommand(query, connection))
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     connection.Open();
 
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
@@ -46,7 +44,7 @@ namespace Infrastructure.Services
 
                             if (!reader.IsDBNull(5))
                             {
-                                byte[] buffer = (byte[])reader["Imagen"];
+                                byte[] buffer = (byte[])reader["imagen"];
                                 imageBase64 = Convert.ToBase64String(buffer);
                             }
 
@@ -69,20 +67,20 @@ namespace Infrastructure.Services
 
         public Product GetProductById(int id)
         {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
-                string query = "SELECT P.Id, P.NombreProducto, P.Descripcion, P.Precio, P.Stock, P.Activo, I.Imagen " +
-                            "FROM Productos P INNER JOIN ImagenesProducto I ON P.Id = I.ProductoId WHERE P.Id = @Id";
-                using (SqlCommand command = new SqlCommand(query, connection))
+                string query = "SELECT P.id, P.nombre_producto, P.descripcion, P.precio, P.stock, P.activo, I.imagen " +
+                            "FROM productos P INNER JOIN imagenes_producto I ON P.id = I.producto_id WHERE P.id = @Id";
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Id", id);
                     connection.Open();
 
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
                     {
                         if (reader.Read())
                         {
-                            byte[] imagenBytes = (byte[])reader["Imagen"];
+                            byte[] imagenBytes = (byte[])reader["imagen"];
 
                             return new Product
                             {
@@ -91,7 +89,7 @@ namespace Infrastructure.Services
                                 descripcion = reader.GetString(2),
                                 precio = reader.GetDecimal(3),
                                 stock = reader.GetInt32(4),
-                                activo = reader.GetBoolean(5) ? 1 : 0,
+                                activo = reader.GetBoolean(5),
                                 ImagenBase64 = Convert.ToBase64String(imagenBytes)
                             };
                         }
@@ -104,16 +102,16 @@ namespace Infrastructure.Services
 
         public async Task<Product> GetProductByName(string productName)
         {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
-                string query = "SELECT Id, NombreProducto, Descripcion, Precio, Stock, Activo " +
-                            "FROM Productos WHERE NombreProducto = @NombreProducto";
-                using (SqlCommand command = new SqlCommand(query, connection))
+                string query = "SELECT id, nombre_producto, descripcion, precio, stock, activo " +
+                            "FROM productos WHERE nombre_producto = @NombreProducto";
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@NombreProducto", productName);
                     connection.Open();
 
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
                     {
                         if (reader.Read())
                         {
@@ -125,7 +123,7 @@ namespace Infrastructure.Services
                                 descripcion = reader.GetString(2),
                                 precio = reader.GetDecimal(3),
                                 stock = reader.GetInt32(4),
-                                activo = reader.GetBoolean(5) ? 1 : 0
+                                activo = reader.GetBoolean(5)
                             };
                         }
                     }
@@ -138,7 +136,7 @@ namespace Infrastructure.Services
         public Boolean AddProduct(Product product)
         {
             // 1. Insertar el producto en la tabla 'Productos'
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
 
@@ -149,13 +147,12 @@ namespace Infrastructure.Services
                     {
                         // Insertar producto en la tabla Productos
                         string insertProductQuery = @"
-                            INSERT INTO Productos (NombreProducto, Descripcion, Stock, Precio)
-                            OUTPUT INSERTED.Id
-                            VALUES (@NombreProducto, @Descripcion, @Stock, @Precio);";
+                            INSERT INTO productos (nombre_producto, descripcion, stock, precio)
+                            VALUES (@NombreProducto, @Descripcion, @Stock, @Precio)
+                            RETURNING id;";
 
                         int productId;
-
-                        using (var command = new SqlCommand(insertProductQuery, connection, transaction))
+                        using (var command = new NpgsqlCommand(insertProductQuery, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@NombreProducto", product.nombreProducto);
                             command.Parameters.AddWithValue("@Descripcion", product.descripcion);
@@ -177,10 +174,10 @@ namespace Infrastructure.Services
 
                                 // Insertar la imagen en la tabla ImagenesProducto
                                 string insertImageQuery = @"
-                                    INSERT INTO ImagenesProducto (ProductoId, NombreImagen, Imagen)
+                                    INSERT INTO imagenes_producto (producto_id, nombre_imagen, imagen)
                                     VALUES (@ProductoId, @NombreImagen, @Imagen);";
 
-                                using (var command = new SqlCommand(insertImageQuery, connection, transaction))
+                                using (var command = new NpgsqlCommand(insertImageQuery, connection, transaction))
                                 {
                                     command.Parameters.AddWithValue("@ProductoId", productId);
                                     command.Parameters.AddWithValue("@NombreImagen", product.ImagenFile.FileName);
@@ -227,7 +224,7 @@ namespace Infrastructure.Services
 
         public Boolean RemoveProduct(int id)
         {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
 
@@ -236,20 +233,19 @@ namespace Infrastructure.Services
                     try
                     {
                         string deleteImagesQuery = @"
-                            DELETE FROM ImagenesProducto
-                            WHERE ProductoId = @ProductoId";
-
-                        using (var command = new SqlCommand(deleteImagesQuery, connection, transaction))
+                            DELETE FROM imagenes_producto
+                            WHERE producto_id = @ProductoId";
+                        using (var command = new NpgsqlCommand(deleteImagesQuery, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@ProductoId", id);
                             command.ExecuteNonQuery();
                         }
 
                         string deleteProductQuery = @"
-                            DELETE FROM Productos
-                            WHERE Id = @Id";
+                            DELETE FROM productos
+                            WHERE id = @Id";
 
-                        using (var command = new SqlCommand(deleteProductQuery, connection, transaction))
+                        using (var command = new NpgsqlCommand(deleteProductQuery, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@Id", id);
                             command.ExecuteNonQuery();

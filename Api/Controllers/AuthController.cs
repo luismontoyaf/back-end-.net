@@ -1,16 +1,17 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
-using Core.Models;
-using Infrastructure.Services;
-using Infrastructure.Data;
 using System.Security.Cryptography;
-using Microsoft.AspNetCore.Identity.Data;
-using Core.Interfaces;
+using System.Text;
 using Application.Services;
+using Core.Interfaces;
+using Core.Models;
+using Infrastructure.Data;
+using Infrastructure.Services;
+using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 
 namespace BackendApp.Controllers
 {
@@ -22,11 +23,14 @@ namespace BackendApp.Controllers
         private readonly UserRepository _userRepository;
         private readonly IUserRepository _userIRepository;
         private readonly UserService _userService;
-        private readonly string _key = "YourSuperLongSecretKeyForJWTAuthentication123!";
+        private readonly string _key;
 
-        public AuthController(AppDbContext context, IUserRepository iUserRepository, UserService userService)
+        public AuthController(AppDbContext context, IUserRepository iUserRepository, UserService userService, IConfiguration configuration)
         {
-            string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
+            _key = configuration["JwtSettings:SecretKey"];
+
+            //string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
+            string connectionString = configuration.GetConnectionString("DefaultConnection");
 
             _userRepository = new UserRepository(connectionString, context);
             _userIRepository = iUserRepository;

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace Core.Models
 {
@@ -13,7 +14,7 @@ namespace Core.Models
 
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public string? NumeroFactura { get; set; } // opcional si es calculado
-        public string JsonFactura { get; set; } = string.Empty;
+        public JsonDocument JsonFactura { get; set; }
         public string FormaPago { get; set; } = string.Empty;
         public DateTime? FechaCreacion { get; set; }
     }

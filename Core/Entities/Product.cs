@@ -15,7 +15,7 @@ namespace Core.Models
         public string? ImagenBase64 { get; set; } // Para enviar al frontend
         [NotMapped]
         public IFormFile? ImagenFile { get; set; } // Para recibir archivos al agregar
-        public int? activo { get; set; } = 1;
+        public bool? activo { get; set; } = true;
     }
 
     public class ImagenProducto

@@ -20,42 +20,97 @@ namespace Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Client>(entity =>
+            {
+                entity.ToTable("clientes");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.nombre).HasColumnName("nombre");
+                entity.Property(e => e.apellidos).HasColumnName("apellidos");
+                entity.Property(e => e.tipoDocumento).HasColumnName("tipo_documento");
+                entity.Property(e => e.numDocumento).HasColumnName("num_documento");
+                entity.Property(e => e.correo).HasColumnName("correo");
+                entity.Property(e => e.fechaNacimiento).HasColumnName("fecha_nacimiento").HasDefaultValueSql("GETDATE()").ValueGeneratedOnAdd();
+                entity.Property(e => e.celular).HasColumnName("celular");
+                entity.Property(e => e.direccion).HasColumnName("direccion");
+                entity.Property(e => e.genero).HasColumnName("genero");
+                entity.Property(e => e.estado).HasColumnName("estado");
+            });
+
+            modelBuilder.Entity<Employe>(entity =>
+            {
+                entity.ToTable("usuarios");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.nombre).HasColumnName("nombre");
+                entity.Property(e => e.apellidos).HasColumnName("apellidos");
+                entity.Property(e => e.tipoDocumento).HasColumnName("tipo_documento");
+                entity.Property(e => e.numDocumento).HasColumnName("num_documento");
+                entity.Property(e => e.correo).HasColumnName("correo");
+                entity.Property(e => e.fechaNacimiento).HasColumnName("fecha_nacimiento").HasDefaultValueSql("GETDATE()").ValueGeneratedOnAdd();
+                entity.Property(e => e.fechaIngreso).HasColumnName("fecha_ingreso").HasDefaultValueSql("GETDATE()").ValueGeneratedOnAdd();
+                entity.Property(e => e.rol).HasColumnName("rol");
+                entity.Property(e => e.estado).HasColumnName("estado");
+                entity.Property(e => e.contrasena).HasColumnName("contrasena");
+                entity.Property(e => e.celular).HasColumnName("celular");
+                entity.Property(e => e.direccion).HasColumnName("direccion");
+                entity.Property(e => e.genero).HasColumnName("genero");
+                entity.Property(e => e.clienteId).HasColumnName("cliente_id");
+            });
+
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.ToTable("productos");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.nombreProducto).HasColumnName("nombre_producto");
+                entity.Property(e => e.descripcion).HasColumnName("descripcion");
+                entity.Property(e => e.stock).HasColumnName("stock");
+                entity.Property(e => e.precio).HasColumnName("precio");
+            });
+
             modelBuilder.Entity<Sale>(entity =>
             {
-                entity.ToTable("Ventas");
+                entity.ToTable("ventas");
 
                 entity.HasKey(e => e.IdFactura);
 
-                entity.Property(e => e.IdFactura).HasColumnName("ID_FACTURA");
-                entity.Property(e => e.IdCliente).HasColumnName("ID_CLIENTE");
-                entity.Property(e => e.NumeroFactura).HasColumnName("NUMERO_FACTURA");
-                entity.Property(e => e.JsonFactura).HasColumnName("JSON_FACTURA");
-                entity.Property(e => e.FormaPago).HasColumnName("FORMA_PAGO");
-                entity.Property(e => e.FechaCreacion).HasColumnName("FECHA_CREACION").HasDefaultValueSql("GETDATE()").ValueGeneratedOnAdd();
+                entity.Property(e => e.IdFactura).HasColumnName("id_factura");
+                entity.Property(e => e.IdCliente).HasColumnName("id_cliente");
+                entity.Property(e => e.NumeroFactura).HasColumnName("numero_factura");
+                entity.Property(e => e.JsonFactura).HasColumnName("json_factura");
+                entity.Property(e => e.FormaPago).HasColumnName("forma_pago");
+                entity.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion").HasDefaultValueSql("GETDATE()").ValueGeneratedOnAdd();
             });
 
             modelBuilder.Entity<UserRefreshToken>(entity =>
             {
-                entity.ToTable("UserRefreshTokens");
+                entity.ToTable("user_refresh_tokens");
 
                 entity.HasKey(e => e.IdRefreshToken);
 
-                entity.Property(e => e.IdRefreshToken).HasColumnName("ID_REFRESH_TOKEN");
-                entity.Property(e => e.UserId).HasColumnName("USER_ID");
-                entity.Property(e => e.Token).HasColumnName("TOKEN");
-                entity.Property(e => e.ExpiryDate).HasColumnName("EXPIRY_DATE");
+                entity.Property(e => e.IdRefreshToken).HasColumnName("id_refresh_token");
+                entity.Property(e => e.UserId).HasColumnName("user_id");
+                entity.Property(e => e.Token).HasColumnName("token");
+                entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
             });
 
             modelBuilder.Entity<Variant>(entity =>
             {
-                entity.ToTable("VARIANTES");
+                entity.ToTable("variantes");
 
                 entity.HasKey(e => e.Id);
 
-                entity.Property(e => e.Id).HasColumnName("ID_VARIANTE");
-                entity.Property(e => e.Name).HasColumnName("NOMBRE_VARIANTE");
-                entity.Property(e => e.JsonValues).HasColumnName("JSON_VARIANTE");
-                entity.Property(e => e.State).HasColumnName("ESTADO");
+                entity.Property(e => e.Id).HasColumnName("id_variante");
+                entity.Property(e => e.Name).HasColumnName("nombre_variante");
+                entity.Property(e => e.JsonValues).HasColumnName("json_variante");
+                entity.Property(e => e.State).HasColumnName("estado");
             });
         }
     }

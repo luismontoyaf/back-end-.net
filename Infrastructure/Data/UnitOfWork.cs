@@ -7,10 +7,11 @@ namespace Infrastructure.Data
     {
         private readonly AppDbContext _context;
 
-        string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
+        string connectionString;
 
-        public UnitOfWork(AppDbContext context)
+        public UnitOfWork(AppDbContext context, IConfiguration configuration)
         {
+            connectionString = configuration.GetConnectionString("DefaultConnection");
             _context = context;
             Ventas = new SaleRepository(context);
             Clientes = new UserRepository(connectionString, context);

@@ -3,9 +3,8 @@ using Core.Models;
 using Microsoft.Data.SqlClient;
 using Infrastructure.Data;
 using Core.Interfaces;
-using BCrypt.Net;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.JsonPatch;
+using Npgsql;
 
 namespace Infrastructure.Services
 {
@@ -22,15 +21,15 @@ namespace Infrastructure.Services
 
         public EmployeDto GetUserByEmail(string email)
         {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
-                string query = "SELECT Id, Nombre, Apellidos, Correo, Rol FROM Usuarios WHERE Correo = @Email";
-                using (SqlCommand command = new SqlCommand(query, connection))
+                string query = "SELECT id, nombre, apellidos, correo, rol FROM usuarios WHERE correo = @Email";
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Email", email);
                     connection.Open();
 
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
                     {
                         if (reader.Read())
                         {
@@ -59,11 +58,11 @@ namespace Infrastructure.Services
         {
             string hashedPasswordFromDb = null;
 
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
-                string query = "SELECT Contrasena FROM Usuarios WHERE Correo = @Username";
+                string query = "SELECT contrasena FROM usuarios WHERE correo = @Username";
 
-                using (SqlCommand command = new SqlCommand(query, connection))
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Username", username);
                     connection.Open();

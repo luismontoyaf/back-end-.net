@@ -1,5 +1,6 @@
-using Core.Models;
+using System.Text.Json;
 using Core.Interfaces;
+using Core.Models;
 using Newtonsoft.Json;
 
 namespace Application.Services
@@ -48,11 +49,15 @@ namespace Application.Services
                 TotalProducto = item.Quantity * item.UnitPrice
             }).ToList();
 
-            var jsonFactura = JsonConvert.SerializeObject(new
+            var facturaObject = new
             {
                 Total = total,
                 Productos = productos
-            }, Formatting.Indented);
+            };
+
+            var jsonFactura = JsonDocument.Parse(
+                JsonConvert.SerializeObject(facturaObject)
+            );
 
             var sale = new Sale
             {

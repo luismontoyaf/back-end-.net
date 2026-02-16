@@ -1,11 +1,9 @@
-using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
-using Core.Models;
 using Core.Interfaces;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using Microsoft.EntityFrameworkCore;
+using Core.Models;
 using Infrastructure.Data;
+using Microsoft.Data.SqlClient;
+using Npgsql;
 
 namespace Infrastructure.Services
 {
@@ -46,13 +44,13 @@ namespace Infrastructure.Services
         {
             var image = "";
 
-            using (var connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 string query = @"
-                        SELECT ValorParametro
-                        FROM Parametros WHERE NombreParametro = @NombreParametro";
+                        SELECT valor
+                        FROM parametros WHERE nombre = @NombreParametro";
 
-                using (var command = new SqlCommand(query, connection))
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     // Agregar el parámetro antes de abrir la conexión
                     command.Parameters.AddWithValue("@NombreParametro", info.nombreParametro);
@@ -75,13 +73,13 @@ namespace Infrastructure.Services
         {
             var parameterValue = "";
 
-            using (var connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 string query = @"
-                        SELECT ValorParametro
-                        FROM Parametros WHERE NombreParametro = @NombreParametro";
+                        SELECT valor
+                        FROM parametros WHERE nombre = @NombreParametro";
 
-                using (var command = new SqlCommand(query, connection))
+                using (var command = new NpgsqlCommand(query, connection))
                 {
                     // Agregar el parámetro antes de abrir la conexión
                     command.Parameters.AddWithValue("@NombreParametro", nameParameter);
