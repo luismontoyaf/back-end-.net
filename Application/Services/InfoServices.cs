@@ -16,20 +16,10 @@ namespace Application.Services
             _imageUploadPath = configuration["ImageUploadPath"]; // Obtener la ruta desde appsettings.json
         }
 
-        //public bool AddProduct(Product producto)
-        //{
-        //    // Validación de reglas de negocio, como contraseñas que coincidan
-        //    if (string.IsNullOrEmpty(producto.nombreProducto) || string.IsNullOrEmpty(producto.nombreProducto))
-        //    {
-        //        throw new ArgumentException("Datos inválidos");
-        //    }
+        public bool ValidateTenant(string tenantId)
+        {
+            return _infoRepository.ValidateTenant(tenantId);
+        }
 
-        //    GuardarImagen(producto.imagen);
-        //    // Hash de la contraseña
-        //    producto.nombreProducto = producto.nombreProducto;
-
-        //    // Llama al repositorio para guardar el usuario
-        //    return _productRepository.AddProduct(producto);
-        //}
     }
 }

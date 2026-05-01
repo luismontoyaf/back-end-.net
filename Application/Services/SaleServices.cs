@@ -9,68 +9,75 @@ namespace Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IProductRepository _productRepository;
+        private readonly TenantProvider _tenantProvider;
 
-        public SaleService(IUnitOfWork unitOfWork, IProductRepository productRepository)
+        public SaleService(IUnitOfWork unitOfWork, IProductRepository productRepository, TenantProvider tenantProvider)
         {
             _unitOfWork = unitOfWork;
             _productRepository = productRepository;
+            _tenantProvider = tenantProvider;
         }
 
         public async Task<Sale> SaveSaleAsync(InvoiceRequest request)
         {
-            // 1. Obtener el cliente por documento  
-            var cliente = await _unitOfWork.Clientes.GetClientByIdAsync(request.idClient);
-            if (cliente == null) throw new Exception("Cliente no encontrado");
-
-            // 2. Validar stock y descontar
-            foreach (var item in request.Items)
+            try
             {
-                var producto = _productRepository.GetProductById(item.Id ?? throw new ("Id no encontrado"));
+                var tenantId = _tenantProvider.GetTenantId();
 
-                if (producto == null)
-                    throw new Exception($"Producto no encontrado (Nombre {item.ProductName})");
+                var cliente = await _unitOfWork.Clientes.GetClientByIdAsync(request.idClient, tenantId);
+                if (cliente == null || cliente.TenantId != tenantId)
+                    throw new Exception("Cliente no encontrado");
 
-                if (producto.stock < item.Quantity)
-                    throw new Exception($"Stock insuficiente para el producto {producto.nombreProducto}");
+                foreach (var item in request.Items)
+                {
+                    var producto = _productRepository.GetProductById(item.Id ?? throw new Exception("Id no encontrado"));
 
-                producto.stock -= item.Quantity;
+                    if (producto == null || producto.TenantId != tenantId)
+                        throw new Exception($"Producto no encontrado ({item.ProductName})");
 
-                _productRepository.Update(producto);
+                    if (producto.stock < item.Quantity)
+                        throw new Exception($"Stock insuficiente para el producto {producto.nombreProducto}");
+
+                    producto.stock -= item.Quantity;
+
+                    _productRepository.Update(producto);
+                }
+
+                var total = request.Items.Sum(i => i.UnitPrice * i.Quantity);
+
+                var productos = request.Items.Select(item => new
+                {
+                    Nombre = item.ProductName,
+                    Cantidad = item.Quantity,
+                    ValorUnitario = item.UnitPrice,
+                    TotalProducto = item.Quantity * item.UnitPrice
+                }).ToList();
+
+                var facturaObject = new
+                {
+                    Total = total,
+                    Productos = productos
+                };
+
+                var jsonFactura = JsonDocument.Parse(JsonConvert.SerializeObject(facturaObject));
+
+                var sale = new Sale
+                {
+                    IdCliente = cliente.Id,
+                    TenantId = tenantId,
+                    JsonFactura = jsonFactura,
+                    FormaPago = request.PaymentMethod
+                };
+
+                await _unitOfWork.Ventas.AddAsync(sale);
+                await _unitOfWork.SaveChangesAsync();
+
+                return sale;
             }
-
-            // 2. Calcular total  
-            var total = request.Items.Sum(i => i.UnitPrice * i.Quantity);
-
-            var productos = request.Items.Select(item => new
+            catch (Exception ex)
             {
-                Nombre = item.ProductName,
-                Cantidad = item.Quantity,
-                ValorUnitario = item.UnitPrice,
-                TotalProducto = item.Quantity * item.UnitPrice
-            }).ToList();
-
-            var facturaObject = new
-            {
-                Total = total,
-                Productos = productos
-            };
-
-            var jsonFactura = JsonDocument.Parse(
-                JsonConvert.SerializeObject(facturaObject)
-            );
-
-            var sale = new Sale
-            {
-                IdCliente = cliente.Id,
-                JsonFactura = jsonFactura,
-                FormaPago = request.PaymentMethod
-            };
-
-            // 5. Guardar  
-            await _unitOfWork.Ventas.AddAsync(sale);
-            await _unitOfWork.SaveChangesAsync();
-
-            return sale;
+                throw new Exception($"Error al guardar la venta: {ex.Message}");
+            }
         }
     }
 }

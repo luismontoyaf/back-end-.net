@@ -5,6 +5,7 @@ namespace Core.Interfaces
 {
     public interface IProductRepository
     {
+        List<Product> GetAllProducts();
         bool AddProduct(Product product);
         void EditProduct(Product product, JsonPatchDocument<Product> patchDoc);
         bool RemoveProduct(int id);

@@ -1,8 +1,4 @@
-using Core.Models;
-using Core.Interfaces;
 using System.Data;
-using Newtonsoft.Json;
-using Microsoft.Data.SqlClient;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,55 +6,55 @@ namespace Application.Services
 {
     public class ReportService
     {
-        private readonly IReportRepository _reportRepository;
+        private readonly TenantProvider _tenantProvider;
         private readonly AppDbContext _context;
 
-
-        public ReportService(IReportRepository reportRepository, AppDbContext context, IConfiguration configuration)
+        public ReportService(
+            TenantProvider tenantProvider,
+            AppDbContext context)
         {
+            _tenantProvider = tenantProvider;
             _context = context;
-            _reportRepository = reportRepository;
         }
 
-        public async Task<string> GetReport(int id, string startDate = null, string endDate= null)
+        public async Task<string> GetReport(int id, string startDate = null, string endDate = null)
         {
+            var tenantId = _tenantProvider.GetTenantId();
 
-                var sql = "SELECT sp_generate_system_report(@reportId, @startDate, @endDate)";
+            var sql = "SELECT sp_generate_system_report(@reportId, @tenantId, @startDate, @endDate)";
 
-                using var cmd = _context.Database.GetDbConnection().CreateCommand();
-                cmd.CommandText = sql;
+            using var cmd = _context.Database.GetDbConnection().CreateCommand();
+            cmd.CommandText = sql;
 
-                cmd.Parameters.Add(new Npgsql.NpgsqlParameter("reportId", id));
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("reportId", id));
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("tenantId", tenantId));
 
-                DateTime? start = !string.IsNullOrEmpty(startDate) ? DateTime.Parse(startDate) : (DateTime?)null;
-                DateTime? end = !string.IsNullOrEmpty(endDate) ? DateTime.Parse(endDate) : (DateTime?)null;
+            DateTime? start = !string.IsNullOrEmpty(startDate) ? DateTime.Parse(startDate) : (DateTime?)null;
+            DateTime? end = !string.IsNullOrEmpty(endDate) ? DateTime.Parse(endDate) : (DateTime?)null;
 
-                cmd.Parameters.Add(new Npgsql.NpgsqlParameter("startDate", start ?? (object)DBNull.Value));
-                cmd.Parameters.Add(new Npgsql.NpgsqlParameter("endDate", end ?? (object)DBNull.Value));
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("startDate", start ?? (object)DBNull.Value));
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("endDate", end ?? (object)DBNull.Value));
 
-                await _context.Database.OpenConnectionAsync();
-                try
-                {
-                    using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection); 
-                    string jsonResult = null; 
+            await _context.Database.OpenConnectionAsync();
 
-                    if (await reader.ReadAsync()) { 
-                        jsonResult = reader.GetString(0); 
-                    }
-                    
-                    return jsonResult;
-                }
-                catch(Exception ex)
-                {
-                    _context.Database.CloseConnectionAsync();
-                    // Manejo de excepciones
-                    Console.WriteLine($"Error al generar el reporte: {ex.Message}");
-                    return ex.Message;
-                }
-                finally
-                {
-                    await _context.Database.CloseConnectionAsync();
-                }
+            try
+            {
+                using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection);
+
+                if (await reader.ReadAsync())
+                    return reader.GetString(0);
+
+                return null;
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al generar el reporte: {ex.Message}");
+                return null;
+            }
+            finally
+            {
+                await _context.Database.CloseConnectionAsync();
+            }
+        }
     }
 }

@@ -1,3 +1,4 @@
+using Application.Services;
 using Core.Interfaces;
 using Infrastructure.Services;
 
@@ -7,16 +8,18 @@ namespace Infrastructure.Data
     {
         private readonly AppDbContext _context;
 
+        private readonly TenantProvider _tenantProvider;
+
         string connectionString;
 
-        public UnitOfWork(AppDbContext context, IConfiguration configuration)
+        public UnitOfWork(AppDbContext context, TenantProvider tenantProvider, IConfiguration configuration)
         {
             connectionString = configuration.GetConnectionString("DefaultConnection");
             _context = context;
-            Ventas = new SaleRepository(context);
+            Ventas = new SaleRepository(context, tenantProvider);
             Clientes = new UserRepository(connectionString, context);
             Usuarios = new UserRepository(connectionString, context);
-            Variants = new VariantRepository(context);
+            Variants = new VariantRepository(context, tenantProvider);
         }
 
         public ISaleRepository Ventas { get; }

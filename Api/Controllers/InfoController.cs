@@ -5,6 +5,7 @@ using Infrastructure.Data;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 
@@ -16,59 +17,74 @@ namespace BackendApp.Controllers
     {
         private readonly InfoRepository _repository;
         private readonly InfoService _infoService;
+        private readonly TenantProvider _tenantProvider;
 
-        public InfoController(InfoService infoService, AppDbContext context, IConfiguration configuration)
+        public InfoController(InfoService infoService, TenantProvider tenantProvider, AppDbContext context, IConfiguration configuration)
         {
             // Cadena de conexión (puedes moverla a configuración)
             string connectionString = configuration.GetConnectionString("DefaultConnection");
-
-            _repository = new InfoRepository(connectionString, context);
+                
+            _repository = new InfoRepository(tenantProvider, connectionString, context);
             _infoService = infoService;
+            _tenantProvider = tenantProvider;
         }
 
         [HttpGet("getUserInfo")]
-        [Authorize] // 🔒 Requiere autenticación
+        [Authorize]
         public IActionResult GetUserInfo()
         {
             var identity = HttpContext.User.Identity as ClaimsIdentity;
 
-            if (identity != null)
+            if (identity == null)
+                return Unauthorized();
+
+            var userClaims = identity.Claims;
+
+            var userInfo = new
             {
-                var userClaims = identity.Claims;
+                Id = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)?.Value,
+                Username = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value,
+                Email = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.Email)?.Value,
+                Role = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.Role)?.Value,
+                TenantId = userClaims.FirstOrDefault(x => x.Type == "tenantId")?.Value
+            };
 
-                var userInfo = new
-                {
-                    Id = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)?.Value,
-                    Username = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value,
-                    Email = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.Email)?.Value,
-                    Role = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.Role)?.Value
-                };
-
-                return Ok(userInfo);
-            }
-
-            return Unauthorized();
+            return Ok(userInfo);
         }
 
         [HttpGet("getUserInfoByDocument")]
         [Authorize] // 🔒 Requiere autenticación
         public IActionResult GetUserInfoByDocument([FromQuery] string document)
         {
-            var InfoUser = _repository.GetUserInfoByDocument(document);
+            var tenantId = _tenantProvider.GetTenantId();
 
-            if (InfoUser != null)
-            {
-                return Ok(InfoUser); // Devuelve los productos en JSON
-            }
+            var infoUser = _repository.GetUserInfoByDocument(document, tenantId);
 
-            return NotFound("Producto no encontrado."); ;
+            if (infoUser != null)
+                return Ok(infoUser);
+
+            return NotFound("Cliente no encontrado.");
         }
 
         [HttpPost("getParameter")]
         public IActionResult GetParameter([FromBody] Info info)
         {
-            string parameterValue = _repository.GetParameter(info);
-            return Ok(parameterValue); // Devuelve los productos en JSON
+            var tenantId = _tenantProvider.GetTenantId();
+
+            string parameterValue = _repository.GetParameter(info.nombreParametro, tenantId);
+
+            return Ok(parameterValue);
+        }
+
+        [HttpGet("validate/{tenantId}")]
+        public IActionResult ValidateTenant(string tenantId)
+        {
+            var exists = _infoService.ValidateTenant(tenantId);
+
+            if (!exists)
+                return NotFound();
+
+            return Ok();
         }
     }
 }

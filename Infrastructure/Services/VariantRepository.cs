@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
-using Core.Models;
+using Application.Services;
 using Core.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using Core.Models;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 namespace Infrastructure.Services
@@ -13,28 +14,43 @@ namespace Infrastructure.Services
     public class VariantRepository : IVariantRepository
     {
         private readonly AppDbContext _context;
+        private readonly TenantProvider _tenantProvider;
 
-        public VariantRepository(AppDbContext context)
+        public VariantRepository(AppDbContext context, TenantProvider tenantProvider)
         {
             _context = context;
+            _tenantProvider = tenantProvider;
         }
 
-        public async Task SaveVariantAsync(Variant variant) => await _context.Variants.AddAsync(variant);
-
-        Task<List<Variant>> IVariantRepository.GetVariants()
+        public async Task SaveVariantAsync(Variant variant)
         {
-            return _context.Variants.Select(u => new Variant
-            {
-                Id = u.Id,
-                Name = u.Name,
-                JsonValues = u.JsonValues,
-                State = u.State
-            }).ToListAsync();
+            var tenantId = _tenantProvider.GetTenantId();
+            variant.TenantId = tenantId;
+            await _context.Variants.AddAsync(variant);
+        }
+
+        async Task<List<Variant>> IVariantRepository.GetVariants()
+        {
+            var tenantId = _tenantProvider.GetTenantId();
+
+            return await _context.Variants
+                .Where(u => u.TenantId == tenantId)
+                .Select(u => new Variant
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    JsonValues = u.JsonValues,
+                    State = u.State
+                })
+                .ToListAsync();
         }
 
         public async Task<Variant?> GetVariantById(int id)
         {
-            return await _context.Variants.FindAsync(id);
+            var tenantId = _tenantProvider.GetTenantId();
+
+            return await _context.Variants
+                .FirstOrDefaultAsync(v => v.Id == id && v.TenantId == tenantId);
         }
 
         void IVariantRepository.Update(Variant variant)
@@ -46,6 +62,5 @@ namespace Infrastructure.Services
         {
             _context.Variants.Remove(variant);
         }
-
     }
 }

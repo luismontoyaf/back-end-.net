@@ -1,4 +1,5 @@
 using System.Data;
+using Application.Services;
 using Core.Interfaces;
 using Core.Models;
 using Infrastructure.Data;
@@ -9,19 +10,21 @@ namespace Infrastructure.Services
 {
     public class InfoRepository : IInfoRepository
     {
+        private readonly TenantProvider _tenantProvider;
         private readonly string _connectionString;
         private readonly AppDbContext _context;
 
-        public InfoRepository(string connectionString, AppDbContext context)
+        public InfoRepository(TenantProvider tenantProvider, string connectionString, AppDbContext context)
         {
+            _tenantProvider = tenantProvider;
             _connectionString = connectionString;
             _context = context;
         }
 
-        public Client GetUserInfoByDocument(string cedula)
+        public Client GetUserInfoByDocument(string cedula, int tenantId)
         {
             var client = _context.Clientes
-                .Where(u => u.numDocumento == cedula)
+                .Where(u => u.numDocumento == cedula && u.TenantId == tenantId)
                 .Select(u => new Client
                 {
                     Id = u.Id,
@@ -40,62 +43,67 @@ namespace Infrastructure.Services
             return client;
         }
 
-        public string GetParameter(Info info)
+        public string GetParameter(string nombreParametro, int tenantId)
         {
-            var image = "";
+            var value = "";
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 string query = @"
-                        SELECT valor
-                        FROM parametros WHERE nombre = @NombreParametro";
+            SELECT valor
+            FROM parametros 
+            WHERE nombre = @NombreParametro
+            AND tenant_id = @TenantId";
 
                 using (var command = new NpgsqlCommand(query, connection))
                 {
-                    // Agregar el parámetro antes de abrir la conexión
-                    command.Parameters.AddWithValue("@NombreParametro", info.nombreParametro);
+                    command.Parameters.AddWithValue("@NombreParametro", nombreParametro);
+                    command.Parameters.AddWithValue("@TenantId", tenantId);
 
                     connection.Open();
 
-                    // Ejecutar la consulta correctamente
                     var result = command.ExecuteScalar();
+
                     if (result != null)
-                    {
-                        image = result.ToString(); // Convertir a string si el resultado no es nulo
-                    }
+                        value = result.ToString();
                 }
             }
 
-            return image;
+            return value;
         }
 
-        public string GetParameterByName(string nameParameter)
+        public string GetParameterByName(string nameParameter, int tenantId)
         {
-            var parameterValue = "";
+            var value = "";
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 string query = @"
-                        SELECT valor
-                        FROM parametros WHERE nombre = @NombreParametro";
+            SELECT valor
+            FROM parametros 
+            WHERE nombre = @NombreParametro
+            AND tenant_id = @TenantId";
 
                 using (var command = new NpgsqlCommand(query, connection))
                 {
-                    // Agregar el parámetro antes de abrir la conexión
                     command.Parameters.AddWithValue("@NombreParametro", nameParameter);
+                    command.Parameters.AddWithValue("@TenantId", tenantId);
 
                     connection.Open();
 
-                    // Ejecutar la consulta correctamente
                     var result = command.ExecuteScalar();
+
                     if (result != null)
-                    {
-                        parameterValue = result.ToString(); // Convertir a string si el resultado no es nulo
-                    }
+                        value = result.ToString();
                 }
             }
 
-            return parameterValue;
+            return value;
+        }
+
+        public bool ValidateTenant(string tenantId)
+        {
+            return _context.Tenants.Any(t => t.identificador == tenantId);
         }
 
     }

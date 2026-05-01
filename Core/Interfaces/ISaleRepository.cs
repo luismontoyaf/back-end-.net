@@ -7,6 +7,6 @@ namespace Core.Interfaces
         Task AddAsync(Sale sale);
         Task<int> GetLastInvoiceNumber();
         Task<Sale> GetInvoiceByClientId(int idCliente);
-        Task<Sale> GetInvoiceByInvoiceNumber(string numFactura);
+        Task<Sale> GetInvoiceByInvoiceNumber(string numFactura, int tenantId);
     }
 }

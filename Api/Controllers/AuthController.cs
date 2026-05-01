@@ -10,6 +10,7 @@ using Infrastructure.Data;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -23,41 +24,68 @@ namespace BackendApp.Controllers
         private readonly UserRepository _userRepository;
         private readonly IUserRepository _userIRepository;
         private readonly UserService _userService;
+        private readonly TenantService _tenantService;
         private readonly string _key;
 
-        public AuthController(AppDbContext context, IUserRepository iUserRepository, UserService userService, IConfiguration configuration)
+        public AuthController(AppDbContext context, 
+            IUserRepository iUserRepository, 
+            UserService userService, 
+            IConfiguration configuration,
+            TenantService tenantService)
         {
             _key = configuration["JwtSettings:SecretKey"];
 
-            //string connectionString = "Server=LUISM;Database=AppData;Trusted_Connection=True;TrustServerCertificate=True;";
             string connectionString = configuration.GetConnectionString("DefaultConnection");
 
             _userRepository = new UserRepository(connectionString, context);
             _userIRepository = iUserRepository;
             _userService = userService;
+            _tenantService = tenantService;
         }
 
         [HttpPost("login")]
-         public async Task<IActionResult> Login([FromBody] Core.Models.LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] Core.Models.LoginRequest request)
         {
-            var user = _userRepository.GetUserByEmail(request.Username);
-            if (_userRepository.ValidateUser(request.Username, request.Password))
+            var tenantId = _tenantService.GetByIdentifier(request.TenantIdentifier.ToString());
+
+            if (tenantId == null)
             {
-                await _userRepository.DeleteRefreshTokenByUserAsync(user.Id ?? throw new("Id no valido"));
-
-                var token = GenerateJwtToken(user);
-                var refreshToken = GenerateRefreshToken();
-
-                // Guardá el refresh token en base de datos o en memoria para asociarlo al usuario
-                await _userRepository.SaveRefreshTokenAsync(user.Id ?? 0, refreshToken, DateTime.UtcNow.AddDays(7));
-
-                return Ok(new { 
-                    Token = token,
-                    RefreshToken = refreshToken
-                });
+                throw new Exception("Tenant no encontrado");
             }
 
-            return Unauthorized(new { Message = "Usuario o contraseña incorrectos" });
+            // 1. Buscar usuario por correo + tenant
+            var user = _userRepository.GetUserByEmail(request.Username, tenantId.Id);
+
+            if (user == null)
+                return Unauthorized(new { Message = "Usuario o contraseña incorrectos" });
+
+            // 2. Validar contraseña
+            var isValid = _userRepository.ValidateUser(request.Username, request.Password, tenantId.Id);
+
+            if (!isValid)
+                return Unauthorized(new { Message = "Usuario o contraseña incorrectos" });
+
+            // 3. Eliminar refresh tokens anteriores
+            await _userRepository.DeleteRefreshTokenByUserAsync(user.Id, tenantId.Id);
+
+            // 4. Generar tokens
+            var token = GenerateJwtToken(user);
+            var refreshToken = GenerateRefreshToken();
+
+            // 5. Guardar refresh token con tenant
+            await _userRepository.SaveRefreshTokenAsync(
+                user.Id,
+                user.TenantId,
+                refreshToken,
+                DateTime.UtcNow.AddDays(7)
+            );
+
+            // 6. Respuesta
+            return Ok(new
+            {
+                Token = token,
+                RefreshToken = refreshToken
+            });
         }
 
         [HttpPost("logout")]
@@ -65,10 +93,19 @@ namespace BackendApp.Controllers
         {
             var storedToken = await _userRepository.GetRefreshTokenAsync(request.RefreshToken);
 
-            if (storedToken != null)
-            {
-                await _userRepository.DeleteRefreshTokenByUserAsync(storedToken.UserId);
-            }
+            if (storedToken == null)
+                return Ok(new { message = "Sesión cerrada correctamente" });
+
+            var user = await _userIRepository.GetUserByIdAsync(storedToken.UserId, storedToken.TenantId);
+
+            if (user == null)
+                return Ok(new { message = "Sesión cerrada correctamente" });
+
+            if (storedToken.TenantId != user.TenantId)
+                return Unauthorized();
+
+            await _userRepository.DeleteRefreshTokenByUserAsync(user.Id, user.TenantId);
+
             return Ok(new { message = "Sesión cerrada correctamente" });
         }
 
@@ -82,30 +119,39 @@ namespace BackendApp.Controllers
                 return Unauthorized(new { message = "Refresh token inválido o expirado" });
             }
 
-            var user = await _userIRepository.GetUserByIdAsync(storedToken.UserId);
+            var user = await _userIRepository.GetUserByIdAsync(storedToken.UserId, storedToken.TenantId);
+
             if (user == null)
             {
                 return Unauthorized(new { message = "Usuario no encontrado" });
             }
 
+            if (storedToken.TenantId != user.TenantId)
+            {
+                return Unauthorized(new { message = "Token inválido para este tenant" });
+            }
+
             var userDto = new EmployeDto
             {
                 Id = user.Id,
+                TenantId = user.TenantId,
                 nombre = user.nombre,
                 apellidos = user.apellidos,
                 correo = user.correo,
                 rol = _userService.ConvertTypeUser(user.rol)
             };
 
-            // Generar nuevos tokens
             var newJwt = GenerateJwtToken(userDto);
             var newRefreshToken = GenerateRefreshToken();
 
-            // Opcional: eliminar el anterior
-            await _userRepository.DeleteRefreshTokenByUserAsync(user.Id);
+            await _userRepository.DeleteRefreshTokenByUserAsync(user.Id, user.TenantId);
 
-            // Guardar el nuevo
-            await _userRepository.SaveRefreshTokenAsync(user.Id, newRefreshToken, DateTime.UtcNow.AddDays(1));
+            await _userRepository.SaveRefreshTokenAsync(
+                user.Id,
+                user.TenantId,
+                newRefreshToken,
+                DateTime.UtcNow.AddDays(1)
+            );
 
             return Ok(new
             {
@@ -126,7 +172,8 @@ namespace BackendApp.Controllers
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // Agrega el ID del usuario
                 new Claim(ClaimTypes.Name, user.nombre),
                 new Claim(ClaimTypes.Email, user.correo), // Agrega el email
-                new Claim(ClaimTypes.Role, user.rol.ToString()) // Agrega el rol del usuario
+                new Claim(ClaimTypes.Role, user.rol.ToString()), // Agrega el rol del usuario
+                new Claim("tenantId", user.TenantId.ToString())
             };
 
             var token = new JwtSecurityToken(

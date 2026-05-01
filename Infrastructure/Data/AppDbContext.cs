@@ -15,6 +15,7 @@ namespace Infrastructure.Data
         public DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
         public required DbSet<Variant> Variants { get; set; }
         public required DbSet<ImagenProducto> ImagenesProducto { get; set; }
+        public required DbSet<Tenant> Tenants { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -37,6 +38,7 @@ namespace Infrastructure.Data
                 entity.Property(e => e.direccion).HasColumnName("direccion");
                 entity.Property(e => e.genero).HasColumnName("genero");
                 entity.Property(e => e.estado).HasColumnName("estado");
+                entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             });
 
             modelBuilder.Entity<Employe>(entity =>
@@ -60,6 +62,7 @@ namespace Infrastructure.Data
                 entity.Property(e => e.direccion).HasColumnName("direccion");
                 entity.Property(e => e.genero).HasColumnName("genero");
                 entity.Property(e => e.clienteId).HasColumnName("cliente_id");
+                entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             });
 
             modelBuilder.Entity<Product>(entity =>
@@ -69,6 +72,7 @@ namespace Infrastructure.Data
                 entity.HasKey(e => e.Id);
 
                 entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.TenantId).HasColumnName("tenant_id");
                 entity.Property(e => e.nombreProducto).HasColumnName("nombre_producto");
                 entity.Property(e => e.descripcion).HasColumnName("descripcion");
                 entity.Property(e => e.stock).HasColumnName("stock");
@@ -83,6 +87,7 @@ namespace Infrastructure.Data
 
                 entity.Property(e => e.IdFactura).HasColumnName("id_factura");
                 entity.Property(e => e.IdCliente).HasColumnName("id_cliente");
+                entity.Property(e => e.TenantId).HasColumnName("tenant_id");
                 entity.Property(e => e.NumeroFactura).HasColumnName("numero_factura");
                 entity.Property(e => e.JsonFactura).HasColumnName("json_factura");
                 entity.Property(e => e.FormaPago).HasColumnName("forma_pago");
@@ -97,6 +102,7 @@ namespace Infrastructure.Data
 
                 entity.Property(e => e.IdRefreshToken).HasColumnName("id_refresh_token");
                 entity.Property(e => e.UserId).HasColumnName("user_id");
+                entity.Property(e => e.TenantId).HasColumnName("tenant_id");
                 entity.Property(e => e.Token).HasColumnName("token");
                 entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
             });
@@ -108,9 +114,24 @@ namespace Infrastructure.Data
                 entity.HasKey(e => e.Id);
 
                 entity.Property(e => e.Id).HasColumnName("id_variante");
+                entity.Property(e => e.TenantId).HasColumnName("tenant_id");
                 entity.Property(e => e.Name).HasColumnName("nombre_variante");
                 entity.Property(e => e.JsonValues).HasColumnName("json_variante");
                 entity.Property(e => e.State).HasColumnName("estado");
+            });
+
+            modelBuilder.Entity<Tenant>(entity =>
+            {
+                entity.ToTable("tenants");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.nombre).HasColumnName("nombre");
+                entity.Property(e => e.identificador).HasColumnName("identificador");
+                entity.HasIndex(e => e.identificador).IsUnique();
+                entity.Property(e => e.estado).HasColumnName("estado").HasDefaultValue(true);
+                entity.Property(e => e.fechaCreacion).HasColumnName("fecha_creacion").HasDefaultValueSql("NOW()");
             });
         }
     }

@@ -16,12 +16,18 @@ namespace BackendApp.Controllers
         private readonly VariantRepository _repository;
         private readonly IVariantRepository _IvariantRepository;
         private readonly VariantService _variantService;
+        private readonly TenantProvider _tenantProvider;
 
-        public VariantController(VariantService variantService, IVariantRepository IvariantRepository, AppDbContext context)
+        public VariantController(
+            VariantService variantService,
+            IVariantRepository IvariantRepository,
+            AppDbContext context,
+            TenantProvider tenantProvider)
         {
-            _repository = new VariantRepository(context);
+            _repository = new VariantRepository(context, tenantProvider);
             _variantService = variantService;
-            _IvariantRepository = IvariantRepository;  
+            _IvariantRepository = IvariantRepository;
+            _tenantProvider = tenantProvider;
         }
 
         [HttpPost("createVariant")]
@@ -33,6 +39,7 @@ namespace BackendApp.Controllers
                     return BadRequest(new { message = "Los datos enviados no son válidos." });
 
                 await _variantService.SaveVariantAsync(variantDto);
+
                 return Ok(new { message = "Variante guardada correctamente" });
             }
             catch (Exception ex)
@@ -46,9 +53,9 @@ namespace BackendApp.Controllers
         {
             try
             {
+                var result = await _variantService.GetVariants();
 
-                List<Variant> variants = await this._IvariantRepository.GetVariants();
-                return Ok(variants);
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -61,7 +68,11 @@ namespace BackendApp.Controllers
         {
             try
             {
-                var variant = await this._IvariantRepository.GetVariantById(id);
+                var variant = await _IvariantRepository.GetVariantById(id);
+
+                if (variant == null)
+                    return NotFound();
+
                 return Ok(variant);
             }
             catch (Exception ex)
@@ -75,9 +86,9 @@ namespace BackendApp.Controllers
         {
             try
             {
+                await _variantService.changeStatusVariant(id);
 
-                await this._variantService.changeStatusVariant(id);
-                return Ok(new {message = "Estado modificado correctamente"});
+                return Ok(new { message = "Estado modificado correctamente" });
             }
             catch (Exception ex)
             {
@@ -90,9 +101,9 @@ namespace BackendApp.Controllers
         {
             try
             {
+                await _variantService.UpdateVariantAsync(id, dto);
 
-                await this._variantService.UpdateVariantAsync(id, dto);
-                return Ok(new { message = "Estado modificado correctamente" });
+                return Ok(new { message = "Variante actualizada correctamente" });
             }
             catch (Exception ex)
             {
@@ -105,8 +116,8 @@ namespace BackendApp.Controllers
         {
             try
             {
+                await _variantService.DeleteVariant(id);
 
-                await this._variantService.DeleteVariant(id);
                 return Ok(new { message = "Variante eliminada correctamente" });
             }
             catch (Exception ex)

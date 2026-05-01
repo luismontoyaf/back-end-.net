@@ -12,30 +12,22 @@ namespace BackendApp.Controllers
     [Route("api/reports")]
     public class ReportController : Controller
     {
-        private readonly ProductRepository _repository;
-
         private readonly ReportService _reportService;
 
-
-
-        public ReportController(ReportService reportService, AppDbContext context, IConfiguration configuration)
+        public ReportController(ReportService reportService)
         {
-            // Cadena de conexión (puedes moverla a configuración)
-            string connectionString = configuration.GetConnectionString("DefaultConnection");
-
             _reportService = reportService;
-            _repository = new ProductRepository(connectionString, context);
         }
 
-        [HttpGet("getReport")]
+        [HttpGet]
         public async Task<IActionResult> GetReport(int id, string startDate = null, string endDate = null)
         {
-            var reports = await _reportService.GetReport(id, startDate, endDate);
-            if (reports == null)
-            {
+            var report = await _reportService.GetReport(id, startDate, endDate);
+
+            if (report == null)
                 return NotFound(new { Message = "No se encontraron reportes" });
-            }
-            return Ok(reports); // Devuelve los productos en JSON
+
+            return Ok(report);
         }
     }
 }

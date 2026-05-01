@@ -17,6 +17,7 @@ namespace Application.Services
         private readonly IInvoiceRepository _invoiceRepository;
         private readonly InvoiceRepository _repository;
         private readonly ISaleRepository _saleRepository;
+        private readonly TenantProvider _tenantProvider;
 
         private readonly EmailService _emailService;
         private readonly string _imageUploadPath;
@@ -27,7 +28,9 @@ namespace Application.Services
             IInvoiceRepository invoiceRepository,
             IUserRepository userRepository,
             EmailService emailService,
-            ISaleRepository saleRepository)
+            ISaleRepository saleRepository,
+            TenantProvider tenantProvider
+            )
         {
             _infoRepository = infoRepository;
             _imageUploadPath = configuration["ImageUploadPath"]; // Obtener la ruta desde appsettings.json
@@ -36,6 +39,7 @@ namespace Application.Services
             _userRepository = userRepository;
             _saleRepository = saleRepository;
             _emailService = emailService;
+            _tenantProvider = tenantProvider;
 
         }
 
@@ -44,41 +48,44 @@ namespace Application.Services
             return await _invoiceRepository.GetAllInvoices();
         }
 
-        public async Task<byte[]> GenerateIndividualInvoice([FromBody] InvoiceRequest request)
+        public async Task<byte[]> GenerateIndividualInvoice(InvoiceRequest request)
         {
             if (request == null || request.Items == null || !request.Items.Any())
                 throw new ArgumentException("Datos inválidos");
 
-            var client = await _userRepository.GetClientByIdAsync(request.idClient);
+            var tenantId = _tenantProvider.GetTenantId();
 
-            var invoice = await _saleRepository.GetInvoiceByInvoiceNumber(request.numInvoice);
+            var client = await _userRepository.GetClientByIdAsync(request.idClient, tenantId);
+            if (client == null || client.TenantId != tenantId)
+                throw new UnauthorizedAccessException("Cliente no pertenece al tenant");
 
-            string nombreEmpresa = _infoRepository.GetParameterByName("NOMBRE_EMPRESA");
+            var invoice = await _saleRepository.GetInvoiceByInvoiceNumber(request.numInvoice, tenantId);
+            if (invoice == null || invoice.TenantId != tenantId)
+                throw new UnauthorizedAccessException("Factura no pertenece al tenant");
 
-            var datosEmpresaJson = _infoRepository.GetParameterByName("DATOS_BASICOS_EMPRESA");
+            string nombreEmpresa = _infoRepository.GetParameterByName("NOMBRE_EMPRESA", tenantId);
+            var datosEmpresaJson = _infoRepository.GetParameterByName("DATOS_BASICOS_EMPRESA", tenantId);
+            decimal valorIva = decimal.Parse(
+                _infoRepository.GetParameterByName("VALOR_IVA", tenantId),
+                CultureInfo.InvariantCulture);
 
-            decimal valorIva = decimal.Parse(_infoRepository.GetParameterByName("VALOR_IVA"), CultureInfo.InvariantCulture);
-
-            // Deserializa el JSON
             var datosEmpresaObj = JsonConvert.DeserializeObject<DatosEmpresaWrapper>(datosEmpresaJson);
 
-            var tipoDocumento = client.tipoDocumento;
-
             var tipoDocumentoMap = new Dictionary<string, string>
-            {
-                { "Cédula de Ciudadanía", "CC" },
-                { "Pasaporte", "PA" },
-                { "Tarjeta de Identidad", "TI" },
-                { "Cédula de Extranjería", "CE" }
-            };
+                {
+                    { "Cédula de Ciudadanía", "CC" },
+                    { "Pasaporte", "PA" },
+                    { "Tarjeta de Identidad", "TI" },
+                    { "Cédula de Extranjería", "CE" }
+                };
 
-            string siglasDocumento = tipoDocumentoMap.TryGetValue(tipoDocumento, out var codigo)
-            ? codigo
-            : "ND";
+            string siglasDocumento = tipoDocumentoMap.TryGetValue(client.tipoDocumento, out var codigo)
+                ? codigo
+                : "ND";
 
             var companyInfo = new DatosEmpresa
             {
-                Nombre = _infoRepository.GetParameterByName("NOMBRE_EMPRESA"),
+                Nombre = nombreEmpresa,
                 Nit = datosEmpresaObj.DatosEmpresa.Nit,
                 Direccion = datosEmpresaObj.DatosEmpresa.Direccion,
                 Celular = datosEmpresaObj.DatosEmpresa.Celular,
@@ -102,7 +109,7 @@ namespace Application.Services
                 }).ToList(),
                 InvoiceNumber = invoice.NumeroFactura,
                 PaymentMethod = request.PaymentMethod,
-                TotalIva = total * valorIva, //IVA del 19%
+                TotalIva = total * valorIva,
                 TotalAmount = total
             };
 
@@ -111,35 +118,49 @@ namespace Application.Services
             document.GeneratePdf(pdfStream);
             pdfStream.Position = 0;
 
-
             if (invoiceData.ClientDocument != "222222222222" && request.sendEmail)
             {
-                await _emailService.SendInvoiceEmailAsync(invoiceData.ClientEmail, invoiceData.ClientName, companyInfo.Nombre, companyInfo.Correo, pdfStream, invoiceData);
+                await _emailService.SendInvoiceEmailAsync(
+                    invoiceData.ClientEmail,
+                    invoiceData.ClientName,
+                    companyInfo.Nombre,
+                    companyInfo.Correo,
+                    pdfStream,
+                    invoiceData);
             }
 
             return pdfStream.ToArray();
-            //return Ok("Factura enviada exitosamente.");
         }
 
-        public async Task<byte[]> GenerateZipInvoices([FromBody] List<InvoiceRequest> requests)
+        public async Task<byte[]> GenerateZipInvoices(List<InvoiceRequest> requests)
         {
             if (requests == null || !requests.Any())
                 throw new ArgumentException("No se proporcionaron facturas");
+
+            var tenantId = _tenantProvider.GetTenantId();
 
             using var zipStream = new MemoryStream();
             using var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true);
 
             foreach (var request in requests)
             {
-                var client = await _userRepository.GetClientByIdAsync(request.idClient);
+                var client = await _userRepository.GetClientByIdAsync(request.idClient, tenantId);
+                if (client == null || client.TenantId != tenantId)
+                    throw new UnauthorizedAccessException("Cliente no pertenece al tenant");
 
-                var invoice = await _saleRepository.GetInvoiceByInvoiceNumber(request.numInvoice);
+                var invoice = await _saleRepository.GetInvoiceByInvoiceNumber(request.numInvoice, tenantId);
+                if (invoice == null || invoice.TenantId != tenantId)
+                    throw new UnauthorizedAccessException("Factura no pertenece al tenant");
 
-                var datosEmpresaJson = _infoRepository.GetParameterByName("DATOS_BASICOS_EMPRESA");
+                var datosEmpresaJson = _infoRepository.GetParameterByName("DATOS_BASICOS_EMPRESA", tenantId);
                 var datosEmpresaObj = JsonConvert.DeserializeObject<DatosEmpresaWrapper>(datosEmpresaJson);
-                decimal valorIva = decimal.Parse(_infoRepository.GetParameterByName("VALOR_IVA"), CultureInfo.InvariantCulture);
 
-                var tipoDocumento = client.tipoDocumento;
+                decimal valorIva = decimal.Parse(
+                    _infoRepository.GetParameterByName("VALOR_IVA", tenantId),
+                    CultureInfo.InvariantCulture);
+
+                string nombreEmpresa = _infoRepository.GetParameterByName("NOMBRE_EMPRESA", tenantId);
+
                 var tipoDocumentoMap = new Dictionary<string, string>
                 {
                     { "Cédula de Ciudadanía", "CC" },
@@ -148,9 +169,12 @@ namespace Application.Services
                     { "Cédula de Extranjería", "CE" }
                 };
 
-                string siglasDocumento = tipoDocumentoMap.TryGetValue(tipoDocumento, out var codigo) ? codigo : "ND";
+                string siglasDocumento = tipoDocumentoMap.TryGetValue(client.tipoDocumento, out var codigo)
+                    ? codigo
+                    : "ND";
 
                 var total = request.Items.Sum(i => i.Quantity * i.UnitPrice);
+
                 var invoiceData = new InvoiceData
                 {
                     ClientName = client.nombre + " " + client.apellidos,
@@ -172,7 +196,7 @@ namespace Application.Services
 
                 var companyInfo = new DatosEmpresa
                 {
-                    Nombre = _infoRepository.GetParameterByName("NOMBRE_EMPRESA"),
+                    Nombre = nombreEmpresa,
                     Nit = datosEmpresaObj.DatosEmpresa.Nit,
                     Direccion = datosEmpresaObj.DatosEmpresa.Direccion,
                     Celular = datosEmpresaObj.DatosEmpresa.Celular,
@@ -184,34 +208,45 @@ namespace Application.Services
                 document.GeneratePdf(pdfStream);
                 pdfStream.Position = 0;
 
-                var entry = archive.CreateEntry($"Factura_{invoice.NumeroFactura}_{invoice.NombreCliente}.pdf");
+                var entry = archive.CreateEntry($"Factura_{invoice.NumeroFactura}_{client.nombre}.pdf");
+
                 using var entryStream = entry.Open();
                 await pdfStream.CopyToAsync(entryStream);
             }
 
-            archive.Dispose(); // Finaliza el ZIP
+            archive.Dispose();
             zipStream.Position = 0;
 
             return zipStream.ToArray();
         }
 
-        public async Task<List<Sale>> GetListInvoices()
+        public async Task<List<InvoiceDto>> GetListInvoices()
         {
-            var invoices = await GetAllInvoicesAsync();
+            var tenantId = _tenantProvider.GetTenantId();
 
+            var invoices = await _invoiceRepository.GetAllInvoices();
             var usuarios = await _userRepository.GetAllClientsAsync();
 
-            var usuarioDict = usuarios.ToDictionary(u => u.Id);
+            var usuarioDict = usuarios
+                .Where(u => u.TenantId == tenantId)
+                .ToDictionary(u => u.Id);
 
-            foreach (var invoice in invoices)
+            return invoices.Select(inv =>
             {
-                if (usuarioDict.TryGetValue(invoice.IdCliente, out var usuario))
-                {
-                    invoice.NombreCliente = $"{usuario.nombre} {usuario.apellidos}";
-                }
-            }
+                usuarioDict.TryGetValue(inv.IdCliente, out var usuario);
 
-            return invoices;
+                return new InvoiceDto
+                {
+                    IdFactura = inv.IdFactura,
+                    IdCliente = inv.IdCliente,
+                    TenantId = inv.TenantId,
+                    NombreCliente = usuario != null ? $"{usuario.nombre} {usuario.apellidos}" : string.Empty,
+                    NumeroFactura = inv.NumeroFactura ?? string.Empty,
+                    JsonFactura = inv.JsonFactura.RootElement.GetRawText(),
+                    FormaPago = inv.FormaPago,
+                    FechaCreacion = inv.FechaCreacion ?? DateTime.MinValue
+                };
+            }).ToList();
         }
 
     }

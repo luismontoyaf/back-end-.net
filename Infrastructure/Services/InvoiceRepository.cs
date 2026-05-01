@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
-using Core.Models;
+using Application.Services;
 using Core.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using Core.Models;
 using Infrastructure.Data;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services
 {
@@ -12,17 +13,21 @@ namespace Infrastructure.Services
     {
         private readonly string _connectionString;
         private readonly AppDbContext _context;
+        private readonly TenantProvider _tenantProvider;
 
-        public InvoiceRepository(string connectionString, AppDbContext context)
+        public InvoiceRepository(string connectionString, AppDbContext context, TenantProvider tenantProvider)
         {
             _connectionString = connectionString;
             _context = context;
+            _tenantProvider = tenantProvider;
         }
 
         public Client GetUserInfoByDocument(string cedula)
         {
+            var tenantId = _tenantProvider.GetTenantId();
+
             var client = _context.Clientes
-                .Where(u => u.numDocumento == cedula)
+                .Where(u => u.numDocumento == cedula && u.TenantId == tenantId) // 🔥 CLAVE
                 .Select(u => new Client
                 {
                     Id = u.Id,
@@ -31,9 +36,9 @@ namespace Infrastructure.Services
                     tipoDocumento = u.tipoDocumento,
                     numDocumento = u.numDocumento,
                     fechaNacimiento = (DateTime)u.fechaNacimiento,
+                    contrasena = u.contrasena,
                     direccion = u.direccion,
                     correo = u.correo,
-                    contrasena = u.contrasena,
                     celular = u.celular
                 })
                 .FirstOrDefault();
@@ -41,9 +46,13 @@ namespace Infrastructure.Services
             return client;
         }
 
-        public async Task<List<Sale>> GetAllInvoices ()
+        public async Task<List<Sale>> GetAllInvoices()
         {
-            return await _context.Ventas.ToListAsync();
+            var tenantId = _tenantProvider.GetTenantId();
+
+            return await _context.Ventas
+                .Where(v => v.TenantId == tenantId)
+                .ToListAsync();
         }
 
     }

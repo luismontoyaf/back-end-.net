@@ -26,7 +26,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularApp", policy =>
     {
-        policy.WithOrigins("http://localhost:4200") // Cambiar según el dominio de Angular
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -62,6 +62,9 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<SaleService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<VariantService>();
+builder.Services.AddScoped<TenantService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<TenantProvider>();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -99,7 +102,7 @@ app.UseCors("AllowAngularApp");
     app.UseSwaggerUI();
 //}
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 var summaries = new[]
 {
@@ -120,12 +123,6 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast")
 .WithOpenApi();
-
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
 
 app.UseAuthorization();
 app.MapControllers();

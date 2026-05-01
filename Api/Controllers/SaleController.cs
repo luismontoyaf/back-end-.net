@@ -46,13 +46,11 @@ namespace BackendApp.Controllers
                     await _invoiceService.GenerateIndividualInvoice(newRequest);
                 }
 
-                return Ok(new { message = "Venta guardada correctamente",
-                    invoiceNumber = sale.NumeroFactura
-                });
+                return Ok(new { message = "Venta guardada correctamente", invoiceNumber = sale.NumeroFactura });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message, detalle = ex.StackTrace });
+                return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message, detalle = ex.StackTrace });
             }
         }
     }

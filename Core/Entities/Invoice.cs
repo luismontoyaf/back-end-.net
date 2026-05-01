@@ -37,6 +37,18 @@ namespace Core.Models
         public decimal Subtotal => Quantity * UnitPrice;
     }
 
+    public class InvoiceDto
+    {
+        public int IdFactura { get; set; }
+        public int IdCliente { get; set; }
+        public int TenantId { get; set; }
+        public string NombreCliente { get; set; }
+        public string NumeroFactura { get; set; }
+        public string JsonFactura { get; set; }
+        public string FormaPago { get; set; }
+        public DateTime FechaCreacion { get; set; }
+    }
+
     public class DatosEmpresaWrapper
     {
         public DatosEmpresa DatosEmpresa { get; set; }

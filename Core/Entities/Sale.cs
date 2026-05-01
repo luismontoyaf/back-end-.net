@@ -9,6 +9,7 @@ namespace Core.Models
         [Key]
         public int IdFactura { get; set; }
         public int IdCliente { get; set; }
+        public int TenantId { get; set; }
         [NotMapped]
         public string? NombreCliente { get; set; }
 

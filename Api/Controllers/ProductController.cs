@@ -12,8 +12,6 @@ namespace BackendApp.Controllers
     [Route("api/products")]
     public class ProductController : Controller
     {
-        private readonly ProductRepository _repository;
-
         private readonly ProductService _productService;
 
 
@@ -23,21 +21,32 @@ namespace BackendApp.Controllers
             // Cadena de conexión (puedes moverla a configuración)
             string connectionString = configuration.GetConnectionString("DefaultConnection");
 
-            _repository = new ProductRepository(connectionString, context);
             _productService = productService;
         }
 
-        [HttpGet("getProducts")]
+        [HttpGet]
         public IActionResult GetProducts()
         {
-            List<Product> products = _repository.GetAllProducts();
-            return Ok(products); // Devuelve los productos en JSON
+            var products = _productService.GetAllProducts();
+            return Ok(products);
         }
 
-        [HttpPost("addProduct")]
+        [HttpGet("{id}")]
+        public IActionResult GetProductById(int id)
+        {
+            var product = _productService.GetProductById(id);
+
+            if (product == null)
+                return NotFound("Producto no encontrado.");
+
+            return Ok(product);
+        }
+
+        [HttpPost]
         public IActionResult AddProduct([FromForm] Product producto)
         {
             var result = _productService.AddProduct(producto);
+
             if (result)
                 return Ok(new { Message = "Producto agregado exitosamente" });
 
@@ -48,53 +57,20 @@ namespace BackendApp.Controllers
         public IActionResult EditProduct(int id, [FromBody] JsonPatchDocument<Product> patchDoc)
         {
             if (patchDoc == null)
-            {
-                return BadRequest("Datos de actualización inválidos.");
-            }
+                return BadRequest("Datos inválidos");
 
-            var product = _repository.GetProductById(id);
-            if (product == null)
-            {
-                return NotFound("Producto no encontrado.");
-            }
+            var result = _productService.EditProduct(id, patchDoc);
 
-            patchDoc.ApplyTo(product, error => ModelState.AddModelError("", error.ErrorMessage));
+            if (!result)
+                return NotFound("Producto no encontrado");
 
-            //if (product.ImagenFile != null)
-            //{
-            //    // Procesar la imagen
-            //    var filePath = Path.Combine("Uploads", product.ImagenFile.FileName);
-            //    using (var stream = new FileStream(filePath, FileMode.Create))
-            //    {
-            //        product.ImagenFile.CopyTo(stream);
-            //    }
-            //    using (var memoryStream = new MemoryStream())
-            //    {
-            //        // Leer el archivo de la imagen en un stream de memoria
-            //        product.ImagenFile.CopyTo(memoryStream);
-            //        byte[] imageBytes = memoryStream.ToArray();
-
-            //        product.ImagenBase64 = imageBytes.ToString();
-
-            //    }
-            //}
-
-            // Verifica si el modelo es válido después de la actualización
-            //if (!TryValidateModel(product))
-            //{
-            //    return BadRequest(ModelState);
-            //}
-
-            // Guarda los cambios en la BD
-            _repository.EditProduct(product, patchDoc);
-
-            return Ok(product);
+            return Ok(new { Message = "Producto actualizado correctamente" });
         }
 
         [HttpDelete("{id}")]
         public IActionResult RemoveProduct(int id)
         {
-            var result = _repository.RemoveProduct(id);
+            var result = _productService.RemoveProduct(id);
 
             if (result)
                 return Ok(new { Message = "Producto eliminado correctamente" });
@@ -102,30 +78,18 @@ namespace BackendApp.Controllers
             return BadRequest(new { Message = "No se pudo eliminar el producto" });
         }
 
-        [HttpGet("GetProductById/{id}")]
-        public IActionResult GetProductById(int id) {
-            var product = _repository.GetProductById(id);
-
-            if (product == null)
-            {
-                return NotFound("Producto no encontrado.");
-            }
-
-            return Ok(product);
-        }
-
         [HttpPut("{id}/image")]
         public async Task<IActionResult> UpdateProductImage(int id, IFormFile imagen)
         {
-            if (imagen == null || imagen.Length == 0)
-                return BadRequest("No se envió imagen");
-
-            var product = _repository.GetProductById(id);
-            if (product == null) return NotFound();
-
-            await _productService.UpdateProductImageAsync(id, imagen);
-
-            return Ok(product);
+            try
+            {
+                await _productService.UpdateProductImageAsync(id, imagen);
+                return Ok(new { Message = "Imagen actualizada correctamente" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

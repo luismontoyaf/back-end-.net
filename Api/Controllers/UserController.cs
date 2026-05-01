@@ -17,14 +17,20 @@ namespace BackendApp.Controllers
         private readonly UserRepository _userRepository;
         private readonly IUserRepository _userIRepository;
         private readonly UserService _userService;
+        private readonly TenantProvider _tenantProvider;
 
-        public UserController(UserService userService, IUserRepository iUserRepository, AppDbContext context, IConfiguration configuration)
+        public UserController(UserService userService, 
+            IUserRepository iUserRepository, 
+            AppDbContext context, 
+            IConfiguration configuration,
+            TenantProvider tenantProvider)
         {
             string connectionString = configuration.GetConnectionString("DefaultConnection");
 
             _userRepository = new UserRepository(connectionString, context);
             _userService = userService;
             _userIRepository = iUserRepository;
+            _tenantProvider = tenantProvider;
         }
 
         [HttpPost("register")]
@@ -44,15 +50,17 @@ namespace BackendApp.Controllers
                 correo = client.correo,
                 fechaNacimiento = client.fechaNacimiento,
                 fechaIngreso = DateTime.Today,
-                rol = "Cliente", // Convertir de nuevo a string si es necesario
+                rol = "Cliente",
                 estado = 1,
                 contrasena = client.contrasena,
                 celular = client.celular,
                 direccion = client.direccion,
                 genero = client.genero,
-                clienteId = client.Id
+                clienteId = client.Id,
+                TenantId = client.TenantId
             });
-            if (result)
+
+            if (result && result2)
                 return Ok(new { Message = "Usuario registrado exitosamente" });
 
             return BadRequest(new { Message = "No se pudo registrar el usuario" });
@@ -71,14 +79,24 @@ namespace BackendApp.Controllers
         [HttpGet("getUsers")]
         public async Task<IActionResult> GetUsers()
         {
-            List <EmployeDto> usuarios = await _userIRepository.GetUsers();
+            var usuarios = await _userService.GetUsers();
+
             return Ok(usuarios);
+        }
+
+        [HttpGet("getClients")]
+        public async Task<IActionResult> GetClients()
+        {
+            var result = await _userService.GetClients();
+
+            return Ok(result);
         }
 
         [HttpPut("updateUser")]
         public async Task<IActionResult> UpdateUser([FromBody] UpdateUserRequest request)
         {
             await _userService.UpdateUserAsync(request.Data);
+
             return Ok(new { message = "Usuario actualizado correctamente" });
         }
 
@@ -89,7 +107,7 @@ namespace BackendApp.Controllers
 
             var user = new EmployeDto
             {
-                Id = request.Data.Id,
+                Id = request.Data.Id ?? 0,
                 nombre = request.Data.nombre,
                 apellidos = request.Data.apellidos,
                 tipoDocumento = request.Data.tipoDocumento,
@@ -102,14 +120,22 @@ namespace BackendApp.Controllers
             };
 
             await _userService.UpdateUserAsync(user);
+
             return Ok(new { message = "Usuario actualizado correctamente" });
         }
 
-        [HttpPut("changeStatusUser/{id}")]
-        public async Task<IActionResult> ChangeStatusUser(int id)
+        [HttpPut("changeStatusUser")]
+        public async Task<IActionResult> ChangeStatusUser([FromBody] ChangeStatusRequest request)
         {
-            await _userService.ChangeStatusUserAsync(id);
+            var user = await _userService.ChangeStatusUserAsync(request);
+
+            if (user.clienteId != null)
+            {
+                await _userService.ChangeStatusClientAsync(user.clienteId ?? 0);
+            }
+
             return Ok(new { message = "Usuario desactivado correctamente" });
         }
+
     }
 }

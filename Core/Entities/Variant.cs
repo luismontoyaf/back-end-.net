@@ -7,6 +7,7 @@ namespace Core.Models
     {
         [Key]
         public int Id { get; set; }
+        public int TenantId {  get; set; }
         public string Name { get; set; } = string.Empty;
         public string JsonValues { get; set; } = string.Empty;
         public bool State { get; set; }
@@ -16,6 +17,7 @@ namespace Core.Models
     {
         public string Name { get; set; }
         public List<AtributeDto> Atributes { get; set; }
+        public int TenantId { get; set; } 
     }
 
     public class AtributeDto

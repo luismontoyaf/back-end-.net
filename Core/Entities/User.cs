@@ -8,6 +8,7 @@ namespace Core.Models
 
         [Key] 
         public int Id { get; set; }
+        public int TenantId { get; set; }
         public required string nombre { get; set; }
         public required string apellidos { get; set; }
         public required string tipoDocumento { get; set; }
@@ -39,6 +40,8 @@ namespace Core.Models
         public string? direccion { get; set; }
         public string? genero { get; set; }
         public int? estado { get; set; }
+        public int TenantId { get; set; }
+        public string? TenantIdentifier {  get; set; }
     }
 
     public class Employe
@@ -60,13 +63,14 @@ namespace Core.Models
         public required string direccion { get; set; }
         public string? genero { get; set; }
         public int? clienteId { get; set; }
+        public int TenantId { get; set; }
     }
 
     public class EmployeDto
     {
 
         [Key]
-        public int? Id { get; set; }
+        public int Id { get; set; }
         public string? nombre { get; set; }
         public string? apellidos { get; set; }
         public string? tipoDocumento { get; set; }
@@ -81,6 +85,8 @@ namespace Core.Models
         public string? direccion { get; set; }
         public string? genero { get; set; }
         public int? clienteId { get; set; }
+        public int TenantId { get; set; }
+        public string? TenantIdentifier { get; set; }
     }
 
     public class UpdateUserRequest
@@ -91,5 +97,11 @@ namespace Core.Models
     public class UpdateClientRequest
     {
         public ClientDto Data { get; set; }
+    }
+
+    public class ChangeStatusRequest
+    {
+        public int UserId { get; set; }
+        public string typeUser { get; set; }
     }
 }

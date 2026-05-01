@@ -28,7 +28,6 @@ namespace BackendApp.Controllers
             try
             {
                 var invoice = await _invoiceService.GenerateIndividualInvoice(request);
-
                 return File(invoice.ToArray(), "application/pdf", "factura.pdf");
             }
             catch (ArgumentException ex)

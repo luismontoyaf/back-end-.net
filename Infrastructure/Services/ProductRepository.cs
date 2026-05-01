@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
+using Application.Services;
 using Core.Interfaces;
 using Core.Models;
 using Infrastructure.Data;
@@ -13,15 +14,19 @@ namespace Infrastructure.Services
     {
         private readonly string _connectionString;
         private readonly AppDbContext _context;
+        private readonly TenantProvider _tenantProvider;
 
-        public ProductRepository(string connectionString, AppDbContext context)
+        public ProductRepository(string connectionString, AppDbContext context, TenantProvider tenantProvider)
         {
             _connectionString = connectionString;
             _context = context;
+            _tenantProvider = tenantProvider;
         }
 
         public List<Product> GetAllProducts()
         {
+            var tenantId = _tenantProvider.GetTenantId();
+
             var products = new List<Product>();
 
             using (var connection = new NpgsqlConnection(_connectionString))
@@ -30,13 +35,16 @@ namespace Infrastructure.Services
                 SELECT p.id, p.nombre_producto, p.descripcion, p.stock, p.precio, i.imagen
                 FROM productos p
                 LEFT JOIN imagenes_producto i ON p.id = i.producto_id
-                WHERE p.activo = true";
+                WHERE p.activo = true
+                AND p.tenant_id = @TenantId"; 
 
                 using (var command = new NpgsqlCommand(query, connection))
                 {
+                    command.Parameters.AddWithValue("@TenantId", tenantId);
+
                     connection.Open();
 
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
+                    using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
@@ -67,16 +75,24 @@ namespace Infrastructure.Services
 
         public Product GetProductById(int id)
         {
+            var tenantId = _tenantProvider.GetTenantId();
+
             using (var connection = new NpgsqlConnection(_connectionString))
             {
-                string query = "SELECT P.id, P.nombre_producto, P.descripcion, P.precio, P.stock, P.activo, I.imagen " +
-                            "FROM productos P INNER JOIN imagenes_producto I ON P.id = I.producto_id WHERE P.id = @Id";
+                string query = @"
+                    SELECT P.id, P.tenant_id, P.nombre_producto, P.descripcion, P.precio, P.stock, P.activo, I.imagen 
+                    FROM productos P 
+                    INNER JOIN imagenes_producto I ON P.id = I.producto_id 
+                    WHERE P.id = @Id AND P.tenant_id = @TenantId";
+
                 using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Id", id);
+                    command.Parameters.AddWithValue("@TenantId", tenantId);
+
                     connection.Open();
 
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
+                    using (var reader = command.ExecuteReader())
                     {
                         if (reader.Read())
                         {
@@ -85,11 +101,12 @@ namespace Infrastructure.Services
                             return new Product
                             {
                                 Id = reader.GetInt32(0),
-                                nombreProducto = reader.GetString(1),
-                                descripcion = reader.GetString(2),
-                                precio = reader.GetDecimal(3),
-                                stock = reader.GetInt32(4),
-                                activo = reader.GetBoolean(5),
+                                TenantId = reader.GetInt32(1),
+                                nombreProducto = reader.GetString(2),
+                                descripcion = reader.GetString(3),
+                                precio = reader.GetDecimal(4),
+                                stock = reader.GetInt32(5),
+                                activo = reader.GetBoolean(6),
                                 ImagenBase64 = Convert.ToBase64String(imagenBytes)
                             };
                         }
@@ -133,53 +150,51 @@ namespace Infrastructure.Services
             return null;
         }
 
-        public Boolean AddProduct(Product product)
+        public bool AddProduct(Product product)
         {
-            // 1. Insertar el producto en la tabla 'Productos'
+            var tenantId = _tenantProvider.GetTenantId();
+
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
 
-                // Iniciar una transacción para asegurar que ambos inserts sean atómicos
                 using (var transaction = connection.BeginTransaction())
                 {
                     try
                     {
-                        // Insertar producto en la tabla Productos
                         string insertProductQuery = @"
-                            INSERT INTO productos (nombre_producto, descripcion, stock, precio)
-                            VALUES (@NombreProducto, @Descripcion, @Stock, @Precio)
-                            RETURNING id;";
+                    INSERT INTO productos (nombre_producto, descripcion, stock, precio, tenant_id)
+                    VALUES (@NombreProducto, @Descripcion, @Stock, @Precio, @TenantId)
+                    RETURNING id;";
 
                         int productId;
+
                         using (var command = new NpgsqlCommand(insertProductQuery, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@NombreProducto", product.nombreProducto);
                             command.Parameters.AddWithValue("@Descripcion", product.descripcion);
                             command.Parameters.AddWithValue("@Stock", product.stock);
                             command.Parameters.AddWithValue("@Precio", product.precio);
+                            command.Parameters.AddWithValue("@TenantId", tenantId); 
 
-                            // Ejecutar la consulta y obtener el Id del producto insertado
                             productId = (int)command.ExecuteScalar();
                         }
 
-                        // 2. Insertar imagen en la tabla 'ImagenesProducto'
                         if (product.ImagenFile != null && product.ImagenFile.Length > 0)
                         {
-                            using (var memoryStream = new MemoryStream())
+                            using (var ms = new MemoryStream())
                             {
-                                // Leer el archivo de la imagen en un stream de memoria
-                                product.ImagenFile.CopyTo(memoryStream);
-                                byte[] imageBytes = memoryStream.ToArray();
+                                product.ImagenFile.CopyTo(ms);
+                                byte[] imageBytes = ms.ToArray();
 
-                                // Insertar la imagen en la tabla ImagenesProducto
                                 string insertImageQuery = @"
-                                    INSERT INTO imagenes_producto (producto_id, nombre_imagen, imagen)
-                                    VALUES (@ProductoId, @NombreImagen, @Imagen);";
+                            INSERT INTO imagenes_producto (producto_id, tenant_id, nombre_imagen, imagen)
+                            VALUES (@ProductoId, @TenantId, @NombreImagen, @Imagen);";
 
                                 using (var command = new NpgsqlCommand(insertImageQuery, connection, transaction))
                                 {
                                     command.Parameters.AddWithValue("@ProductoId", productId);
+                                    command.Parameters.AddWithValue("@TenantId", tenantId);
                                     command.Parameters.AddWithValue("@NombreImagen", product.ImagenFile.FileName);
                                     command.Parameters.AddWithValue("@Imagen", imageBytes);
 
@@ -188,15 +203,12 @@ namespace Infrastructure.Services
                             }
                         }
 
-                        // Commit de la transacción si ambos inserts fueron exitosos
                         transaction.Commit();
                         return true;
                     }
-                    catch (Exception ex)
+                    catch
                     {
-                        // Si algo falla, hacer rollback de la transacción
                         transaction.Rollback();
-                        Console.WriteLine(ex.Message);
                         return false;
                     }
                 }
@@ -205,6 +217,14 @@ namespace Infrastructure.Services
 
         public void EditProduct(Product product, JsonPatchDocument<Product> patchDoc)
         {
+            var tenantId = _tenantProvider.GetTenantId();
+
+            var existingProduct = _context.Productos
+                .FirstOrDefault(p => p.Id == product.Id && p.TenantId == tenantId);
+
+            if (existingProduct == null)
+                throw new UnauthorizedAccessException("Producto no pertenece al tenant");
+
             foreach (var operation in patchDoc.Operations)
             {
                 var propertyName = operation.path.TrimStart('/');
@@ -215,8 +235,7 @@ namespace Infrastructure.Services
                 if (Attribute.IsDefined(prop, typeof(NotMappedAttribute)))
                     continue;
 
-                // Marca solo las propiedades modificadas
-                _context.Entry(product).Property(propertyName).IsModified = true;
+                _context.Entry(existingProduct).Property(propertyName).IsModified = true;
             }
 
             _context.SaveChanges();
@@ -224,6 +243,8 @@ namespace Infrastructure.Services
 
         public Boolean RemoveProduct(int id)
         {
+            var tenantId = _tenantProvider.GetTenantId();
+
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
@@ -233,21 +254,28 @@ namespace Infrastructure.Services
                     try
                     {
                         string deleteImagesQuery = @"
-                            DELETE FROM imagenes_producto
-                            WHERE producto_id = @ProductoId";
+                        DELETE FROM imagenes_producto
+                        WHERE producto_id = @ProductoId
+                        AND producto_id IN (
+                            SELECT id FROM productos 
+                            WHERE tenant_id = @TenantId
+                        )";
+
                         using (var command = new NpgsqlCommand(deleteImagesQuery, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@ProductoId", id);
+                            command.Parameters.AddWithValue("@TenantId", tenantId);
                             command.ExecuteNonQuery();
                         }
 
                         string deleteProductQuery = @"
-                            DELETE FROM productos
-                            WHERE id = @Id";
+                        DELETE FROM productos
+                        WHERE id = @Id AND tenant_id = @TenantId";
 
                         using (var command = new NpgsqlCommand(deleteProductQuery, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@Id", id);
+                            command.Parameters.AddWithValue("@TenantId", tenantId);
                             command.ExecuteNonQuery();
                         }
 
@@ -264,6 +292,7 @@ namespace Infrastructure.Services
             }
         }
 
+
         public void Update(Product product)
         {
             _context.Productos.Update(product);
@@ -271,9 +300,12 @@ namespace Infrastructure.Services
 
         public async Task UpdateImageAsync(int productId, string nombreArchivo, byte[] imagenBytes)
         {
+            var tenantId = _tenantProvider.GetTenantId();
+
             // Traer la imagen existente (siempre existe)
             var imagenExistente = await _context.ImagenesProducto
-                .FirstAsync(i => i.ProductoId == productId);
+            .Include(i => i.Producto)
+            .FirstOrDefaultAsync(i => i.ProductoId == productId && i.Producto.TenantId == tenantId);
 
             // Actualizar los datos
             imagenExistente.NombreImagen = nombreArchivo;

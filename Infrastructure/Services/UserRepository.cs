@@ -19,65 +19,71 @@ namespace Infrastructure.Services
             _context = context;
         }
 
-        public EmployeDto GetUserByEmail(string email)
+        public EmployeDto GetUserByEmail(string email, int tenantId)
         {
             using (var connection = new NpgsqlConnection(_connectionString))
             {
-                string query = "SELECT id, nombre, apellidos, correo, rol FROM usuarios WHERE correo = @Email";
+                string query = @"
+            SELECT id, nombre, apellidos, correo, rol, tenant_id 
+            FROM usuarios 
+            WHERE correo = @Email AND tenant_id = @TenantId";
+
                 using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Email", email);
+                    command.Parameters.AddWithValue("@TenantId", tenantId);
+
                     connection.Open();
 
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
+                    using (var reader = command.ExecuteReader())
                     {
                         if (reader.Read())
                         {
                             return new EmployeDto
                             {
                                 Id = reader.GetInt32(0),
-                                nombre = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
-                                apellidos = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
-                                tipoDocumento = "", // Asignar un valor por defecto
-                                numDocumento = "", // Asignar un valor por defecto
-                                correo = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
-                                fechaIngreso = DateTime.Now, // Asignar un valor por defecto
-                                rol = reader.IsDBNull(4) ? string.Empty : reader.GetInt32(4).ToString(),
-                                contrasena = "", // Asignar un valor por defecto
-                                celular = "", // Asignar un valor por defecto
-                                direccion = "" // Asignar un valor por defecto
+                                nombre = reader.GetString(1),
+                                apellidos = reader.GetString(2),
+                                correo = reader.GetString(3),
+                                rol = reader.GetInt32(4).ToString(),
+                                TenantId = reader.GetInt32(5)
                             };
                         }
                     }
                 }
             }
 
-            return null; // Si el usuario no existe, devolvemos null
+            return null;
         }
-        public bool ValidateUser(string username, string password)
+
+        public bool ValidateUser(string username, string password, int tenantId)
         {
             string hashedPasswordFromDb = null;
 
             using (var connection = new NpgsqlConnection(_connectionString))
             {
-                string query = "SELECT contrasena FROM usuarios WHERE correo = @Username";
+                string query = @"
+            SELECT contrasena 
+            FROM usuarios 
+            WHERE correo = @Username AND tenant_id = @TenantId";
 
                 using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Username", username);
+                    command.Parameters.AddWithValue("@TenantId", tenantId);
+
                     connection.Open();
                     var result = command.ExecuteScalar();
+
                     if (result != null)
-                    {
                         hashedPasswordFromDb = result.ToString();
-                    }
                 }
             }
 
             if (hashedPasswordFromDb == null)
                 return false;
 
-            return VerifyHashedPassword(hashedPasswordFromDb, password.Trim());
+            return BCrypt.Net.BCrypt.Verify(password.Trim(), hashedPasswordFromDb);
         }
 
         private bool VerifyHashedPassword(string hashedPassword, string password)
@@ -96,9 +102,9 @@ namespace Infrastructure.Services
             return _context.SaveChanges() > 0;
         }
 
-        Task<Client> IUserRepository.GetClientByIdAsync(int id)
+        Task<Client> IUserRepository.GetClientByIdAsync(int id, int tenantId)
         {
-            return _context.Clientes.FirstOrDefaultAsync(c => c.Id == id);
+            return _context.Clientes.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
         }
 
         Task<List<Client>> IUserRepository.GetAllClientsAsync()
@@ -106,10 +112,12 @@ namespace Infrastructure.Services
             return _context.Clientes.ToListAsync();
         }
 
-        Task<List<EmployeDto>> IUserRepository.GetUsers()
+        Task<List<EmployeDto>> IUserRepository.GetUsers(int tenantId)
         {
-            return _context.Usuarios.Select(u => new EmployeDto
-            {
+            return _context.Usuarios
+                .Where(u => u.TenantId == tenantId)
+                .Select(u => new EmployeDto
+                {
                 Id = u.Id,
                 nombre = u.nombre,
                 apellidos = u.apellidos,
@@ -118,19 +126,47 @@ namespace Infrastructure.Services
                 correo = u.correo,
                 fechaNacimiento = u.fechaNacimiento,
                 fechaIngreso = u.fechaIngreso,
-                rol = u.rol.ToString(), // <- conversión explícita
+                rol = u.rol.ToString(),
                 estado = u.estado,
                 contrasena = u.contrasena,
                 celular = u.celular,
                 direccion = u.direccion,
                 genero = u.genero,
-                clienteId = u.clienteId
-            }).ToListAsync();
+                clienteId = u.clienteId,
+                TenantId = u.TenantId
+                }).ToListAsync();
         }
 
-        async Task<Employe?> IUserRepository.GetUserByIdAsync(int id)
+        Task<List<ClientDto>> IUserRepository.GetClients(int tenantId)
         {
-            return await _context.Usuarios.FindAsync(id);
+            return _context.Clientes
+                .Where(u => u.TenantId == tenantId)
+                .Select(u => new ClientDto
+                {
+                    Id = u.Id,
+                    nombre = u.nombre,
+                    apellidos = u.apellidos,
+                    tipoDocumento = u.tipoDocumento,
+                    numDocumento = u.numDocumento,
+                    correo = u.correo,
+                    fechaNacimiento = u.fechaNacimiento,
+                    estado = u.estado,
+                    contrasena = u.contrasena,
+                    celular = u.celular,
+                    direccion = u.direccion,
+                    genero = u.genero,
+                    TenantId = u.TenantId
+                }).ToListAsync();
+        }
+
+        async Task<Employe?> IUserRepository.GetUserByIdAsync(int id, int tenantId)
+        {
+            return await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == tenantId);
+        }
+
+        async Task<Employe?> IUserRepository.GetUserByIdClientAsync(int id, int tenantId)
+        {
+            return await _context.Usuarios.FirstOrDefaultAsync(u => u.clienteId == id && u.TenantId == tenantId);
         }
 
         void IUserRepository.Update(Employe user)
@@ -143,11 +179,12 @@ namespace Infrastructure.Services
             _context.Clientes.Update(client); // Marca todo como modificado
         }
 
-        public async Task SaveRefreshTokenAsync(int userId, string refreshToken, DateTime expiryDate)
+        public async Task SaveRefreshTokenAsync(int userId, int tenantId, string refreshToken, DateTime expiryDate)
         {
             var token = new UserRefreshToken
             {
                 UserId = userId,
+                TenantId = tenantId,
                 Token = refreshToken,
                 ExpiryDate = expiryDate
             };
@@ -162,10 +199,10 @@ namespace Infrastructure.Services
                 .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
         }
 
-        public async Task DeleteRefreshTokenByUserAsync(int userId)
+        public async Task DeleteRefreshTokenByUserAsync(int userId, int tenantId)
         {
             var tokens = _context.UserRefreshTokens
-                .Where(rt => rt.UserId == userId);
+                .Where(rt => rt.UserId == userId && rt.TenantId == tenantId);
 
              _context.UserRefreshTokens.RemoveRange(tokens);
              await _context.SaveChangesAsync();

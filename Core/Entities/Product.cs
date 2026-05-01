@@ -7,6 +7,7 @@ namespace Core.Models
     {
         [Key]
         public required int Id { get; set; }
+        public int TenantId { get; set; }
         public required string nombreProducto { get; set; }
         public required string descripcion { get; set; }
         public required int stock { get; set; }
