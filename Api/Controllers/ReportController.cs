@@ -19,7 +19,7 @@ namespace BackendApp.Controllers
             _reportService = reportService;
         }
 
-        [HttpGet]
+        [HttpGet("getReport")]
         public async Task<IActionResult> GetReport(int id, string startDate = null, string endDate = null)
         {
             var report = await _reportService.GetReport(id, startDate, endDate);
