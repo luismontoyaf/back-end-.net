@@ -37,7 +37,8 @@ namespace Application.Services
 
             producto.TenantId = _tenantProvider.GetTenantId();
 
-            GuardarImagen(producto.ImagenFile);
+            //Se desactiva metodo para no escribir archivos directamente en server.
+            //GuardarImagen(producto.ImagenFile);
 
             return _productRepository.AddProduct(producto);
         }

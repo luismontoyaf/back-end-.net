@@ -19,6 +19,17 @@ namespace BackendApp.Controllers
             _reportService = reportService;
         }
 
+        [HttpGet("getListReports")]
+        public async Task<IActionResult> GetListReports()
+        {
+            var reports = await _reportService.GetListReports();
+
+            if (reports == null || !reports.Any())
+                return NotFound(new { Message = "No se encontraron reportes" });
+
+            return Ok(reports);
+        }
+
         [HttpGet("getReport")]
         public async Task<IActionResult> GetReport(int id, string startDate = null, string endDate = null)
         {

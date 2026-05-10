@@ -1,4 +1,5 @@
 using System.Data;
+using Core.Models;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,43 @@ namespace Application.Services
         {
             _tenantProvider = tenantProvider;
             _context = context;
+        }
+
+        public async Task<List<ReportDto>> GetListReports()
+        {
+            var sql = "SELECT id, name FROM report WHERE active = true";
+
+            using var cmd = _context.Database.GetDbConnection().CreateCommand();
+            cmd.CommandText = sql;
+
+            await _context.Database.OpenConnectionAsync();
+
+            try
+            {
+                using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection);
+
+                var reports = new List<ReportDto>();
+
+                while (await reader.ReadAsync())
+                {
+                    reports.Add(new ReportDto
+                    {
+                        Id = reader.GetInt32(0),
+                        Name = reader.GetString(1)
+                    });
+                }
+
+                return reports;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al obtener la lista de reportes: {ex.Message}");
+                return new List<ReportDto>();
+            }
+            finally
+            {
+                await _context.Database.CloseConnectionAsync();
+            }
         }
 
         public async Task<string> GetReport(int id, string startDate = null, string endDate = null)
