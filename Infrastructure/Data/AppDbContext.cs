@@ -16,6 +16,8 @@ namespace Infrastructure.Data
         public required DbSet<Variant> Variants { get; set; }
         public required DbSet<ImagenProducto> ImagenesProducto { get; set; }
         public required DbSet<Tenant> Tenants { get; set; }
+        public required DbSet<Egreso> Egresos { get; set; }
+        public required DbSet<TipoEgreso> TipoEgresos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -88,6 +90,7 @@ namespace Infrastructure.Data
                 entity.Property(e => e.IdFactura).HasColumnName("id_factura");
                 entity.Property(e => e.IdCliente).HasColumnName("id_cliente");
                 entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+                entity.Property(e => e.IdVendedor).HasColumnName("id_vendedor");
                 entity.Property(e => e.NumeroFactura).HasColumnName("numero_factura");
                 entity.Property(e => e.JsonFactura).HasColumnName("json_factura");
                 entity.Property(e => e.FormaPago).HasColumnName("forma_pago");
@@ -130,8 +133,67 @@ namespace Infrastructure.Data
                 entity.Property(e => e.nombre).HasColumnName("nombre");
                 entity.Property(e => e.identificador).HasColumnName("identificador");
                 entity.HasIndex(e => e.identificador).IsUnique();
+                entity.Property(e => e.nit).HasColumnName("nit");
+                entity.Property(e => e.direccion).HasColumnName("direccion");
+                entity.Property(e => e.celular).HasColumnName("celular");
+                entity.Property(e => e.correo).HasColumnName("correo");
                 entity.Property(e => e.estado).HasColumnName("estado").HasDefaultValue(true);
                 entity.Property(e => e.fechaCreacion).HasColumnName("fecha_creacion").HasDefaultValueSql("NOW()");
+            });
+
+            modelBuilder.Entity<Egreso>(entity =>
+            {
+                entity.ToTable("egresos");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id");
+
+                entity.Property(e => e.TenantId)
+                    .HasColumnName("tenant_id");
+
+                entity.Property(e => e.TipoEgresoId)
+                    .HasColumnName("id_tipo_egreso");
+
+                entity.Property(e => e.Descripcion)
+                    .HasColumnName("descripcion");
+
+                entity.Property(e => e.Valor)
+                    .HasColumnName("valor");
+
+                entity.Property(e => e.Fecha)
+                    .HasColumnName("fecha");
+
+                entity.Property(e => e.Referencia)
+                    .HasColumnName("referencia");
+
+                entity.Property(e => e.CreadoPor)
+                    .HasColumnName("creado_por");
+
+                entity.HasOne(e => e.TipoEgreso)
+                    .WithMany(t => t.Egresos)
+                    .HasForeignKey(e => e.TipoEgresoId);
+
+                entity.HasOne<Employe>(e => e.UsuarioRadica)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreadoPor)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<TipoEgreso>(entity =>
+            {
+                entity.ToTable("tipo_egreso");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+
+                entity.Property(e => e.Nombre)
+                    .HasColumnName("nombre");
+
+                entity.Property(e => e.Activo)
+                    .HasColumnName("activo");
             });
         }
     }

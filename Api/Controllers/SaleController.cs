@@ -38,7 +38,8 @@ namespace BackendApp.Controllers
                     idClient = request.idClient,
                     Items = request.Items,
                     PaymentMethod = request.PaymentMethod,
-                    sendEmail = request.sendEmail
+                    sendEmail = request.sendEmail,
+                    DiscountPercentage = request.DiscountPercentage
                 };
 
                 if (request.ClientDocument != "222222222222")

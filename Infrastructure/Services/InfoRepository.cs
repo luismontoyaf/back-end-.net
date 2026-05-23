@@ -24,7 +24,7 @@ namespace Infrastructure.Services
         public Client GetUserInfoByDocument(string cedula, int tenantId)
         {
             var client = _context.Clientes
-                .Where(u => u.numDocumento == cedula && u.TenantId == tenantId)
+                .Where(u => (u.numDocumento == cedula && u.TenantId == tenantId) || cedula == "222222222222")
                 .Select(u => new Client
                 {
                     Id = u.Id,
@@ -50,10 +50,10 @@ namespace Infrastructure.Services
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 string query = @"
-            SELECT valor
-            FROM parametros 
-            WHERE nombre = @NombreParametro
-            AND tenant_id = @TenantId";
+                    SELECT valor
+                    FROM parametros 
+                    WHERE nombre = @NombreParametro
+                    AND (tenant_id = @TenantId OR transversal = true)";
 
                 using (var command = new NpgsqlCommand(query, connection))
                 {
@@ -79,10 +79,10 @@ namespace Infrastructure.Services
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 string query = @"
-            SELECT valor
-            FROM parametros 
-            WHERE nombre = @NombreParametro
-            AND tenant_id = @TenantId";
+                    SELECT valor
+                    FROM parametros 
+                    WHERE nombre = @NombreParametro
+                    AND (tenant_id = @TenantId OR transversal = true)";
 
                 using (var command = new NpgsqlCommand(query, connection))
                 {
@@ -99,6 +99,11 @@ namespace Infrastructure.Services
             }
 
             return value;
+        }
+
+        public async Task<Tenant?> GetCompanyByTenant(int tenantId)
+        {
+            return await _context.Tenants.FindAsync(tenantId);
         }
 
         public bool ValidateTenant(string tenantId)

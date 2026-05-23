@@ -50,6 +50,8 @@ builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IVariantRepository, VariantRepository>();
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IExpensesRepository, ExpensesRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -62,6 +64,9 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<SaleService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<VariantService>();
+builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<ExpensesService>();
+
 builder.Services.AddScoped<TenantService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TenantProvider>();

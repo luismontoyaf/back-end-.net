@@ -11,6 +11,7 @@ namespace Core.Models
         public string PaymentMethod { get; set; }
         public List<InvoiceItem> Items { get; set; }
         public bool sendEmail { get; set; }
+        public decimal DiscountPercentage { get; set; }
     }
 
     public class InvoiceData
@@ -26,6 +27,9 @@ namespace Core.Models
         public string? InvoiceNumber { get; set; }
         public decimal TotalIva { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal SubtotalAmount { get; set; }
+        public decimal DiscountPercentage { get; set; }
+        public decimal DiscountAmount { get; set; }
     }
 
     public class InvoiceItem

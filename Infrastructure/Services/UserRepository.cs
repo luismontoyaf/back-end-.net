@@ -107,6 +107,11 @@ namespace Infrastructure.Services
             return _context.Clientes.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
         }
 
+        Task<Client> IUserRepository.GetFinalCustomer()
+        {
+            return _context.Clientes.FirstOrDefaultAsync(c => c.numDocumento == "222222222222");
+        }
+
         Task<List<Client>> IUserRepository.GetAllClientsAsync()
         {
             return _context.Clientes.ToListAsync();
@@ -140,7 +145,7 @@ namespace Infrastructure.Services
         Task<List<ClientDto>> IUserRepository.GetClients(int tenantId)
         {
             return _context.Clientes
-                .Where(u => u.TenantId == tenantId)
+                .Where(u => u.TenantId == tenantId || u.numDocumento == "222222222222")
                 .Select(u => new ClientDto
                 {
                     Id = u.Id,

@@ -24,5 +24,16 @@ namespace Application.Services
 
             return int.Parse(tenantIdClaim);
         }
+
+        public int GetUserId()
+        {
+            var value = _httpContextAccessor.HttpContext?
+                .User.FindFirst("userId")?.Value;
+
+            if (string.IsNullOrEmpty(value))
+                throw new UnauthorizedAccessException("Usuario no autenticado");
+
+            return int.Parse(value);
+        }
     }
 }

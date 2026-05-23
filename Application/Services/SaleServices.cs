@@ -24,8 +24,17 @@ namespace Application.Services
             {
                 var tenantId = _tenantProvider.GetTenantId();
 
-                var cliente = await _unitOfWork.Clientes.GetClientByIdAsync(request.idClient, tenantId);
-                if (cliente == null || cliente.TenantId != tenantId)
+                Client cliente;
+
+                if (request.ClientDocument == "222222222222")
+                {
+                    cliente = await _unitOfWork.Clientes.GetFinalCustomer();
+                }else
+                {
+                    cliente = await _unitOfWork.Clientes.GetClientByIdAsync(request.idClient, tenantId);
+                }
+
+                if ((cliente == null || cliente.TenantId != tenantId) && request.ClientDocument != "222222222222")
                     throw new Exception("Cliente no encontrado");
 
                 foreach (var item in request.Items)
@@ -43,18 +52,32 @@ namespace Application.Services
                     _productRepository.Update(producto);
                 }
 
-                var total = request.Items.Sum(i => i.UnitPrice * i.Quantity);
+                var discount = request.DiscountPercentage;
 
-                var productos = request.Items.Select(item => new
+                var subtotal = request.Items.Sum(i => i.UnitPrice * i.Quantity);
+
+                var discountAmount = subtotal * (discount / 100m);
+                var total = subtotal - discountAmount;
+
+                var productos = request.Items.Select(item =>
                 {
-                    Nombre = item.ProductName,
-                    Cantidad = item.Quantity,
-                    ValorUnitario = item.UnitPrice,
-                    TotalProducto = item.Quantity * item.UnitPrice
+                    var lineSubtotal = item.UnitPrice * item.Quantity;
+                    var lineDiscount = lineSubtotal * (discount / 100m);
+
+                    return new
+                    {
+                        Nombre = item.ProductName,
+                        Cantidad = item.Quantity,
+                        ValorUnitario = item.UnitPrice,
+                        Subtotal = lineSubtotal
+                    };
                 }).ToList();
 
                 var facturaObject = new
                 {
+                    Subtotal = subtotal,
+                    DescuentoPorcentaje = discount,
+                    DescuentoTotal = discountAmount,
                     Total = total,
                     Productos = productos
                 };
@@ -66,7 +89,8 @@ namespace Application.Services
                     IdCliente = cliente.Id,
                     TenantId = tenantId,
                     JsonFactura = jsonFactura,
-                    FormaPago = request.PaymentMethod
+                    FormaPago = request.PaymentMethod,
+                    IdVendedor = _tenantProvider.GetUserId()
                 };
 
                 await _unitOfWork.Ventas.AddAsync(sale);

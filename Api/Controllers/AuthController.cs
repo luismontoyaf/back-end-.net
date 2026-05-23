@@ -169,7 +169,7 @@ namespace BackendApp.Controllers
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.nombre),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // Agrega el ID del usuario
+                new Claim("userId", user.Id.ToString()), // Agrega el ID del usuario
                 new Claim(ClaimTypes.Name, user.nombre),
                 new Claim(ClaimTypes.Email, user.correo), // Agrega el email
                 new Claim(ClaimTypes.Role, user.rol.ToString()), // Agrega el rol del usuario

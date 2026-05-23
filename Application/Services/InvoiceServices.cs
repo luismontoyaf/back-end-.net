@@ -1,12 +1,13 @@
-using Core.Models;
-using Core.Interfaces;
-using Microsoft.AspNetCore.Mvc;
-using Infrastructure.Services;
-using Newtonsoft.Json;
-using QuestPDF.Fluent;
 using System.Globalization;
 using System.IO.Compression;
+using Core.Interfaces;
+using Core.Models;
+using Infrastructure.Data;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using QuestPDF.Fluent;
 
 namespace Application.Services
 {
@@ -55,21 +56,34 @@ namespace Application.Services
 
             var tenantId = _tenantProvider.GetTenantId();
 
-            var client = await _userRepository.GetClientByIdAsync(request.idClient, tenantId);
-            if (client == null || client.TenantId != tenantId)
+            Client client;
+
+            if (request.ClientDocument == null)
+            {
+                client = await _userRepository.GetFinalCustomer();
+            }
+            else
+            {
+                client = await _userRepository.GetClientByIdAsync(request.idClient, tenantId);
+            }
+
+            if ((client == null || client.TenantId != tenantId) && request.ClientDocument != null)
                 throw new UnauthorizedAccessException("Cliente no pertenece al tenant");
 
             var invoice = await _saleRepository.GetInvoiceByInvoiceNumber(request.numInvoice, tenantId);
             if (invoice == null || invoice.TenantId != tenantId)
                 throw new UnauthorizedAccessException("Factura no pertenece al tenant");
 
-            string nombreEmpresa = _infoRepository.GetParameterByName("NOMBRE_EMPRESA", tenantId);
-            var datosEmpresaJson = _infoRepository.GetParameterByName("DATOS_BASICOS_EMPRESA", tenantId);
+            //string nombreEmpresa = _infoRepository.GetParameterByName("NOMBRE_EMPRESA", tenantId);
+            //var datosEmpresaJson = _infoRepository.GetParameterByName("DATOS_BASICOS_EMPRESA", tenantId);
+
+            var company = await _infoRepository.GetCompanyByTenant(tenantId);
+
             decimal valorIva = decimal.Parse(
                 _infoRepository.GetParameterByName("VALOR_IVA", tenantId),
                 CultureInfo.InvariantCulture);
 
-            var datosEmpresaObj = JsonConvert.DeserializeObject<DatosEmpresaWrapper>(datosEmpresaJson);
+            //var datosEmpresaObj = JsonConvert.DeserializeObject<DatosEmpresaWrapper>(datosEmpresaJson);
 
             var tipoDocumentoMap = new Dictionary<string, string>
                 {
@@ -85,31 +99,50 @@ namespace Application.Services
 
             var companyInfo = new DatosEmpresa
             {
-                Nombre = nombreEmpresa,
-                Nit = datosEmpresaObj.DatosEmpresa.Nit,
-                Direccion = datosEmpresaObj.DatosEmpresa.Direccion,
-                Celular = datosEmpresaObj.DatosEmpresa.Celular,
-                Correo = datosEmpresaObj.DatosEmpresa.Correo
+                Nombre = company.nombre,
+                Nit = company.nit,
+                Direccion = company.direccion,
+                Celular = company.celular,
+                Correo = company.correo
             };
 
-            var total = request.Items.Sum(i => i.Quantity * i.UnitPrice);
+            var discount = request.DiscountPercentage;
+
+            var subtotal = request.Items.Sum(i => i.UnitPrice * i.Quantity);
+
+            var discountAmount = subtotal * (discount / 100m);
+
+            // Subtotal después del descuento
+            var subtotalWithDiscount = subtotal - discountAmount;
+
+            // IVA calculado sobre el subtotal ya descontado
+            var totalIva = subtotalWithDiscount * valorIva;
+
+            // Total final
+            var total = subtotalWithDiscount;
 
             var invoiceData = new InvoiceData
             {
-                ClientName = client.nombre + " " + client.apellidos,
+                ClientName = $"{client.nombre} {client.apellidos}",
                 ClientEmail = client.correo,
                 ClientTypeDocument = siglasDocumento,
                 ClientDocument = client.numDocumento,
                 ClientPhone = client.celular,
+
+                InvoiceNumber = invoice.NumeroFactura,
+                PaymentMethod = request.PaymentMethod,
+
                 Items = request.Items.Select(i => new InvoiceItem
                 {
                     ProductName = i.ProductName,
                     Quantity = i.Quantity,
                     UnitPrice = i.UnitPrice
                 }).ToList(),
-                InvoiceNumber = invoice.NumeroFactura,
-                PaymentMethod = request.PaymentMethod,
-                TotalIva = total * valorIva,
+
+                SubtotalAmount = subtotal,
+                DiscountPercentage = discount,
+                DiscountAmount = discountAmount,
+                TotalIva = totalIva,
                 TotalAmount = total
             };
 
@@ -228,7 +261,7 @@ namespace Application.Services
             var usuarios = await _userRepository.GetAllClientsAsync();
 
             var usuarioDict = usuarios
-                .Where(u => u.TenantId == tenantId)
+                .Where(u => u.TenantId == tenantId || u.numDocumento == "222222222222")
                 .ToDictionary(u => u.Id);
 
             return invoices.Select(inv =>

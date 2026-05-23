@@ -8,7 +8,8 @@ namespace Core.Interfaces
         bool CreateClient(Client client);
         bool CreateEmploye(Employe employe);
         Task<Client> GetClientByIdAsync(int id, int tenantId);
-        Task<List<Client>> GetAllClientsAsync();
+        Task<Client> GetFinalCustomer();
+        Task <List<Client>> GetAllClientsAsync();
         Task<List<EmployeDto>> GetUsers(int tenantId);
         Task<List<ClientDto>> GetClients(int tenantId);
         Task<Employe?> GetUserByIdAsync(int id, int tenantId);

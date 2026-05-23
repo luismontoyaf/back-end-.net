@@ -318,7 +318,7 @@ namespace Application.Services
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.RelativeColumn(3); // Producto
+                            columns.RelativeColumn(4); // Producto
                             columns.RelativeColumn(1); // Cantidad
                             columns.RelativeColumn(2); // Precio Unitario
                             columns.RelativeColumn(2); // Subtotal
@@ -340,8 +340,8 @@ namespace Application.Services
                         {
                             table.Cell().Text(item.ProductName);
                             table.Cell().AlignCenter().Text(item.Quantity.ToString());
-                            table.Cell().AlignRight().Text($"{item.UnitPrice:C}");
-                            table.Cell().AlignRight().Text($"{item.Subtotal:C}");
+                            table.Cell().AlignRight().Text($"$ {item.UnitPrice:N0}");
+                            table.Cell().AlignRight().Text($"$ {item.Subtotal:N0}");
                         }
                     });
 
@@ -349,7 +349,6 @@ namespace Application.Services
 
                     col.Item().AlignLeft().Column(inner =>
                     {
-                        // Bloque IVA
                         inner.Item().Width(230)
                             .Background(Colors.White)
                             .Padding(10)
@@ -381,7 +380,10 @@ namespace Application.Services
                             });
 
                             table.Cell().Element(CellStyle).Text("Forma de Pago:").Bold();
-                            table.Cell().Element(CellStyle).Text($"{_data.PaymentMethod}"); // o como sea que lo quieras mostrar
+                            table.Cell().Element(CellStyle).Text($"{_data.PaymentMethod}");
+
+                            table.Cell().Element(CellStyle).Text("Descuento Aplicado:").Bold();
+                            table.Cell().Element(CellStyle).Text($"{_data.DiscountPercentage:N0}%");
                         });
 
                         // Espacio opcional entre columnas
@@ -390,7 +392,25 @@ namespace Application.Services
                         // Columna derecha: Totales
                         row.ConstantColumn(230).AlignRight().Column(inner =>
                         {
-                            // Bloque IVA
+
+                            // DESCUENTO
+                            //inner.Item().Background(Colors.Grey.Lighten3).Padding(10).Table(table =>
+                            //{
+                            //    table.ColumnsDefinition(c =>
+                            //    {
+                            //        c.RelativeColumn(1);
+                            //        c.RelativeColumn(3);
+                            //    });
+
+                            //    table.Cell().Element(CellStyle).Text("Descuento:").Bold();
+                            //    table.Cell().Element(CellStyle)
+                            //        .AlignRight()
+                            //        .Text($"- {_data.DiscountAmount:C}");
+                            //});
+
+                            //inner.Item().Height(5);
+
+                            // IVA
                             inner.Item().Background(Colors.Grey.Lighten3).Padding(10).Table(table =>
                             {
                                 table.ColumnsDefinition(c =>
@@ -400,26 +420,47 @@ namespace Application.Services
                                     c.RelativeColumn(3);
                                 });
 
-                                table.Cell().Element(CellStyle).Text("Iva:").Bold();
-                                table.Cell().Element(CellStyle).AlignRight().Text("19%").Bold();
-                                table.Cell().Element(CellStyle).AlignRight().Text($"{_data.TotalIva:C}").Bold();
+                                table.Cell().Element(CellStyle).Text("IVA:").Bold();
+                                table.Cell().Element(CellStyle).AlignRight().Text("19%");
+                                table.Cell().Element(CellStyle)
+                                    .AlignRight()
+                                    .Text($"$  {_data.TotalIva:N0}");
                             });
 
                             inner.Item().Height(5);
 
-                            // Bloque Total
+                            // SUBTOTAL
+                            //inner.Item().Background(Colors.Grey.Lighten3).Padding(10).Table(table =>
+                            //{
+                            //    table.ColumnsDefinition(c =>
+                            //    {
+                            //        c.RelativeColumn(1);
+                            //        c.RelativeColumn(3);
+                            //    });
+
+                            //    table.Cell().Element(CellStyle).Text("Subtotal:").Bold();
+                            //    table.Cell().Element(CellStyle)
+                            //        .AlignRight()
+                            //        .Text($"{_data.SubtotalAmount:C}");
+                            //});
+
+                            //inner.Item().Height(5);
+
+                            // TOTAL FINAL
                             inner.Item().Background(Colors.Grey.Lighten3).Padding(10).Table(table =>
                             {
                                 table.ColumnsDefinition(c =>
                                 {
-                                    c.RelativeColumn(1);
                                     c.RelativeColumn(1);
                                     c.RelativeColumn(3);
                                 });
 
                                 table.Cell().Element(CellStyle).Text("Total:").Bold();
-                                table.Cell().Element(CellStyle).AlignRight().Text("").Bold();
-                                table.Cell().Element(CellStyle).AlignRight().Text($"{_data.TotalAmount:C}").FontColor(Colors.Green.Darken2).Bold();
+                                table.Cell().Element(CellStyle)
+                                    .AlignRight()
+                                    .Text($"$ {_data.TotalAmount:N0}")
+                                    .FontColor(Colors.Green.Darken2)
+                                    .Bold();
                             });
                         });
                     });
