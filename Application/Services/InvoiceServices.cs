@@ -175,6 +175,17 @@ namespace Application.Services
             using var zipStream = new MemoryStream();
             using var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true);
 
+            var company = await _infoRepository.GetCompanyByTenant(tenantId);
+
+            var companyInfo = new DatosEmpresa
+            {
+                Nombre = company.nombre,
+                Nit = company.nit,
+                Direccion = company.direccion,
+                Celular = company.celular,
+                Correo = company.correo
+            };
+
             foreach (var request in requests)
             {
                 var client = await _userRepository.GetClientByIdAsync(request.idClient, tenantId);
@@ -185,14 +196,14 @@ namespace Application.Services
                 if (invoice == null || invoice.TenantId != tenantId)
                     throw new UnauthorizedAccessException("Factura no pertenece al tenant");
 
-                var datosEmpresaJson = _infoRepository.GetParameterByName("DATOS_BASICOS_EMPRESA", tenantId);
-                var datosEmpresaObj = JsonConvert.DeserializeObject<DatosEmpresaWrapper>(datosEmpresaJson);
+                //var datosEmpresaJson = _infoRepository.GetParameterByName("DATOS_BASICOS_EMPRESA", tenantId);
+                //var datosEmpresaObj = JsonConvert.DeserializeObject<DatosEmpresaWrapper>(datosEmpresaJson);
 
                 decimal valorIva = decimal.Parse(
                     _infoRepository.GetParameterByName("VALOR_IVA", tenantId),
                     CultureInfo.InvariantCulture);
 
-                string nombreEmpresa = _infoRepository.GetParameterByName("NOMBRE_EMPRESA", tenantId);
+                //string nombreEmpresa = _infoRepository.GetParameterByName("NOMBRE_EMPRESA", tenantId);
 
                 var tipoDocumentoMap = new Dictionary<string, string>
                 {
@@ -206,34 +217,44 @@ namespace Application.Services
                     ? codigo
                     : "ND";
 
-                var total = request.Items.Sum(i => i.Quantity * i.UnitPrice);
+                var discount = request.DiscountPercentage;
+
+                var subtotal = request.Items.Sum(i => i.UnitPrice * i.Quantity);
+
+                var discountAmount = subtotal * (discount / 100m);
+
+                // Subtotal después del descuento
+                var subtotalWithDiscount = subtotal - discountAmount;
+
+                // IVA calculado sobre el subtotal ya descontado
+                var totalIva = subtotalWithDiscount * valorIva;
+
+                // Total final
+                var total = subtotalWithDiscount;
 
                 var invoiceData = new InvoiceData
                 {
-                    ClientName = client.nombre + " " + client.apellidos,
+                    ClientName = $"{client.nombre} {client.apellidos}",
                     ClientEmail = client.correo,
                     ClientTypeDocument = siglasDocumento,
                     ClientDocument = client.numDocumento,
                     ClientPhone = client.celular,
+
+                    InvoiceNumber = invoice.NumeroFactura,
+                    PaymentMethod = request.PaymentMethod,
+
                     Items = request.Items.Select(i => new InvoiceItem
                     {
                         ProductName = i.ProductName,
                         Quantity = i.Quantity,
                         UnitPrice = i.UnitPrice
                     }).ToList(),
-                    InvoiceNumber = invoice.NumeroFactura,
-                    PaymentMethod = request.PaymentMethod,
-                    TotalIva = total * valorIva,
-                    TotalAmount = total
-                };
 
-                var companyInfo = new DatosEmpresa
-                {
-                    Nombre = nombreEmpresa,
-                    Nit = datosEmpresaObj.DatosEmpresa.Nit,
-                    Direccion = datosEmpresaObj.DatosEmpresa.Direccion,
-                    Celular = datosEmpresaObj.DatosEmpresa.Celular,
-                    Correo = datosEmpresaObj.DatosEmpresa.Correo
+                    SubtotalAmount = subtotal,
+                    DiscountPercentage = discount,
+                    DiscountAmount = discountAmount,
+                    TotalIva = totalIva,
+                    TotalAmount = total
                 };
 
                 var document = new InvoiceDocumentService(invoiceData, companyInfo);

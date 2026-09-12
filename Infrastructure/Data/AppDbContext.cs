@@ -79,6 +79,21 @@ namespace Infrastructure.Data
                 entity.Property(e => e.descripcion).HasColumnName("descripcion");
                 entity.Property(e => e.stock).HasColumnName("stock");
                 entity.Property(e => e.precio).HasColumnName("precio");
+
+                entity.HasOne(p => p.Imagen)
+                  .WithOne(i => i.Producto)
+                  .HasForeignKey<ImagenProducto>(i => i.ProductoId);
+            });
+
+            modelBuilder.Entity<ImagenProducto>(entity =>
+            {
+                entity.ToTable("imagenes_producto");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.ProductoId).HasColumnName("producto_id");
+                entity.Property(e => e.tenantId).HasColumnName("tenant_id");
+                entity.Property(e => e.NombreImagen).HasColumnName("nombre_imagen");
+                entity.Property(e => e.Imagen).HasColumnName("imagen");
             });
 
             modelBuilder.Entity<Sale>(entity =>

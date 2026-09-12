@@ -1,12 +1,13 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Core.Models;
+using Application.Services;
 using Core.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using Core.Models;
 using Infrastructure.Data;
 using Infrastructure.Services;
-using Application.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -79,7 +80,10 @@ builder.Services.AddSwaggerGen();
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 
 builder.Services.AddControllers()
-    .AddNewtonsoftJson();
+    .AddNewtonsoftJson(options =>
+    {
+        options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+    });
 
 // Configurar autenticación JWT
 var key = Encoding.UTF8.GetBytes("SecrePereiraKey");

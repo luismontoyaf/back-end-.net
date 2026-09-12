@@ -128,6 +128,9 @@ namespace Application.Services
             if (!string.IsNullOrWhiteSpace(userDto.apellidos))
                 user.apellidos = userDto.apellidos;
 
+            if (!string.IsNullOrWhiteSpace(userDto.tipoDocumento))
+                user.tipoDocumento = userDto.tipoDocumento;
+
             if (userDto.fechaIngreso.HasValue)
                 user.fechaIngreso = userDto.fechaIngreso.Value;
 

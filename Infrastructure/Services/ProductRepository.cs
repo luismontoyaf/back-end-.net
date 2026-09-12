@@ -73,48 +73,20 @@ namespace Infrastructure.Services
             return products;
         }
 
-        public Product GetProductById(int id)
+        public Product? GetProductById(int id)
         {
             var tenantId = _tenantProvider.GetTenantId();
 
-            using (var connection = new NpgsqlConnection(_connectionString))
+            var product = _context.Productos
+                .Include(p => p.Imagen)
+                .FirstOrDefault(p => p.Id == id && p.TenantId == tenantId);
+
+            if (product?.Imagen != null)
             {
-                string query = @"
-                    SELECT P.id, P.tenant_id, P.nombre_producto, P.descripcion, P.precio, P.stock, P.activo, I.imagen 
-                    FROM productos P 
-                    INNER JOIN imagenes_producto I ON P.id = I.producto_id 
-                    WHERE P.id = @Id AND P.tenant_id = @TenantId";
-
-                using (var command = new NpgsqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@Id", id);
-                    command.Parameters.AddWithValue("@TenantId", tenantId);
-
-                    connection.Open();
-
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            byte[] imagenBytes = (byte[])reader["imagen"];
-
-                            return new Product
-                            {
-                                Id = reader.GetInt32(0),
-                                TenantId = reader.GetInt32(1),
-                                nombreProducto = reader.GetString(2),
-                                descripcion = reader.GetString(3),
-                                precio = reader.GetDecimal(4),
-                                stock = reader.GetInt32(5),
-                                activo = reader.GetBoolean(6),
-                                ImagenBase64 = Convert.ToBase64String(imagenBytes)
-                            };
-                        }
-                    }
-                }
+                product.ImagenBase64 = Convert.ToBase64String(product.Imagen.Imagen);
             }
 
-            return null;
+            return product;
         }
 
         public async Task<Product> GetProductByName(string productName)
