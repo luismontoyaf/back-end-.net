@@ -8,9 +8,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{7F7B63A3-3145-4B61-8E3F-BFC16458D5BC}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worflows", "worflows", "{C48038A9-FAAE-47CB-87B1-1F855F49FF6A}"
-	ProjectSection(SolutionItems) = preProject
-		ci.yaml = ci.yaml
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackendApp.Core", "..\BackendApp.Core\BackendApp.Core.csproj", "{5A30D8A6-9FB0-4301-8641-12ED5ECD539E}"
 EndProject
