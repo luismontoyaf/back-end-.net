@@ -3,6 +3,7 @@ using Application.Services;
 using Core.Interfaces;
 using Core.Models;
 using Data;
+using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -72,6 +73,8 @@ builder.Services.AddScoped<ExpensesService>();
 builder.Services.AddScoped<TenantService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TenantProvider>();
+builder.Services.AddScoped<ITenantProvider>(serviceProvider =>
+    serviceProvider.GetRequiredService<TenantProvider>());
 
 // Add services to the container.
 builder.Services.AddControllers();
