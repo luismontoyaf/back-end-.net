@@ -1,8 +1,8 @@
-using System.Text;
+﻿using System.Text;
 using Application.Services;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -33,18 +33,19 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Configura la cadena de conexión
+// Configura la cadena de conexiÃ³n
 string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Registrar la cadena de conexión en el contenedor de dependencias
+// Registrar la cadena de conexiÃ³n en el contenedor de dependencias
 builder.Services.AddSingleton(connectionString);
 
 // Agrega el DbContext al contenedor de dependencias
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Registrar UserRepository como implementación de IUserRepository
+// Registrar UserRepository como implementaciÃ³n de IUserRepository
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+    builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IInfoRepository, InfoRepository>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
@@ -85,7 +86,7 @@ builder.Services.AddControllers()
         options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
     });
 
-// Configurar autenticación JWT
+// Configurar autenticaciÃ³n JWT
 var key = Encoding.UTF8.GetBytes("SecrePereiraKey");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -141,3 +142,4 @@ record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
+

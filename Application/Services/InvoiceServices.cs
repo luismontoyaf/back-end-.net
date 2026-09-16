@@ -1,8 +1,8 @@
-using System.Globalization;
+Ôªøusing System.Globalization;
 using System.IO.Compression;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -52,7 +52,7 @@ namespace Application.Services
         public async Task<byte[]> GenerateIndividualInvoice(InvoiceRequest request)
         {
             if (request == null || request.Items == null || !request.Items.Any())
-                throw new ArgumentException("Datos inv·lidos");
+                throw new ArgumentException("Datos inv√°lidos");
 
             var tenantId = _tenantProvider.GetTenantId();
 
@@ -87,10 +87,10 @@ namespace Application.Services
 
             var tipoDocumentoMap = new Dictionary<string, string>
                 {
-                    { "CÈdula de CiudadanÌa", "CC" },
+                    { "C√©dula de Ciudadan√≠a", "CC" },
                     { "Pasaporte", "PA" },
                     { "Tarjeta de Identidad", "TI" },
-                    { "CÈdula de ExtranjerÌa", "CE" }
+                    { "C√©dula de Extranjer√≠a", "CE" }
                 };
 
             string siglasDocumento = tipoDocumentoMap.TryGetValue(client.tipoDocumento, out var codigo)
@@ -112,7 +112,7 @@ namespace Application.Services
 
             var discountAmount = subtotal * (discount / 100m);
 
-            // Subtotal despuÈs del descuento
+            // Subtotal despu√©s del descuento
             var subtotalWithDiscount = subtotal - discountAmount;
 
             // IVA calculado sobre el subtotal ya descontado
@@ -207,10 +207,10 @@ namespace Application.Services
 
                 var tipoDocumentoMap = new Dictionary<string, string>
                 {
-                    { "CÈdula de CiudadanÌa", "CC" },
+                    { "C√©dula de Ciudadan√≠a", "CC" },
                     { "Pasaporte", "PA" },
                     { "Tarjeta de Identidad", "TI" },
-                    { "CÈdula de ExtranjerÌa", "CE" }
+                    { "C√©dula de Extranjer√≠a", "CE" }
                 };
 
                 string siglasDocumento = tipoDocumentoMap.TryGetValue(client.tipoDocumento, out var codigo)
@@ -223,7 +223,7 @@ namespace Application.Services
 
                 var discountAmount = subtotal * (discount / 100m);
 
-                // Subtotal despuÈs del descuento
+                // Subtotal despu√©s del descuento
                 var subtotalWithDiscount = subtotal - discountAmount;
 
                 // IVA calculado sobre el subtotal ya descontado
@@ -305,3 +305,4 @@ namespace Application.Services
 
     }
 }
+

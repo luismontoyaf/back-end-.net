@@ -1,7 +1,7 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Application.Services;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,3 +44,4 @@ namespace BackendApp.Controllers
         }
     }
 }
+

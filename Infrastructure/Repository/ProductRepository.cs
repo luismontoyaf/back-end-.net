@@ -1,9 +1,9 @@
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
 using Application.Services;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -289,3 +289,4 @@ namespace Infrastructure.Services
 
     }
 }
+

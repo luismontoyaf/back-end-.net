@@ -1,9 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
 using Application.Services;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -64,3 +64,4 @@ namespace Infrastructure.Services
         }
     }
 }
+

@@ -4,6 +4,7 @@ namespace Core.Interfaces
 {
     public interface IUserRepository
     {
+        EmployeDto? GetUserByEmail(string email, int tenantId);
         bool ValidateUser(string username, string password, int tenantId);
         bool CreateClient(Client client);
         bool CreateEmploye(Employe employe);

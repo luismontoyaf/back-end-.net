@@ -1,6 +1,6 @@
-using Core.Interfaces;
+﻿using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 
 namespace Application.Services
 {
@@ -48,3 +48,4 @@ namespace Application.Services
         }
     }
 }
+

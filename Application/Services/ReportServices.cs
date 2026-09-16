@@ -1,6 +1,6 @@
-using System.Data;
+﻿using System.Data;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace Application.Services
@@ -96,3 +96,4 @@ namespace Application.Services
         }
     }
 }
+

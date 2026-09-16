@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Core.Models;
 using Infrastructure.Services;
 using Application.Services;
-using Infrastructure.Data;
+using Data;
 using Core.Interfaces;
 using Newtonsoft.Json;
 
@@ -13,13 +13,11 @@ namespace BackendApp.Controllers
     [Route("api/sale")]
     public class SaleController : ControllerBase
     {
-        private readonly IUnitOfWork _unitOfWork;
         private readonly SaleService _saleService;
         private readonly InvoiceService _invoiceService;
 
-        public SaleController(IUnitOfWork unitOfWork, SaleService saleService, InvoiceService invoiceService)
+        public SaleController(SaleService saleService, InvoiceService invoiceService)
         {
-            _unitOfWork = unitOfWork;
             _saleService = saleService;
             _invoiceService = invoiceService;
         }
@@ -56,3 +54,4 @@ namespace BackendApp.Controllers
         }
     }
 }
+

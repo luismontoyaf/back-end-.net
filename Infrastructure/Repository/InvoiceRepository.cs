@@ -1,9 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
 using Application.Services;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +27,7 @@ namespace Infrastructure.Services
             var tenantId = _tenantProvider.GetTenantId();
 
             var client = _context.Clientes
-                .Where(u => u.numDocumento == cedula && u.TenantId == tenantId) // 🔥 CLAVE
+                .Where(u => u.numDocumento == cedula && u.TenantId == tenantId) // ðŸ”¥ CLAVE
                 .Select(u => new Client
                 {
                     Id = u.Id,
@@ -57,3 +57,4 @@ namespace Infrastructure.Services
 
     }
 }
+

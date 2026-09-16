@@ -4,6 +4,8 @@ namespace Core.Interfaces
 {
     public interface IInfoRepository
     {
+        Client? GetUserInfoByDocument(string document, int tenantId);
+        string GetParameter(string parameterName, int tenantId);
         //bool AddProduct(Product product);
         string GetParameterByName(string parameterName, int tenantId);
 

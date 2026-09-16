@@ -1,6 +1,6 @@
-using Application.Services;
+﻿using Application.Services;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -14,13 +14,8 @@ namespace BackendApp.Controllers
     {
         private readonly ProductService _productService;
 
-
-
-        public ProductController(ProductService productService, AppDbContext context, IConfiguration configuration)
+        public ProductController(ProductService productService)
         {
-            // Cadena de conexión (puedes moverla a configuración)
-            string connectionString = configuration.GetConnectionString("DefaultConnection");
-
             _productService = productService;
         }
 
@@ -57,7 +52,7 @@ namespace BackendApp.Controllers
         public IActionResult EditProduct(int id, [FromBody] JsonPatchDocument<Product> patchDoc)
         {
             if (patchDoc == null)
-                return BadRequest("Datos inválidos");
+                return BadRequest("Datos invÃ¡lidos");
 
             var result = _productService.EditProduct(id, patchDoc);
 
@@ -93,3 +88,4 @@ namespace BackendApp.Controllers
         }
     }
 }
+

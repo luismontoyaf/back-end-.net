@@ -1,10 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Core.Models;
 using Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Infrastructure.Data;
+using Data;
 using Microsoft.AspNetCore.JsonPatch;
 
 namespace Infrastructure.Services
@@ -87,7 +87,7 @@ namespace Infrastructure.Services
             {
                 connection.Open();
 
-                // Iniciar una transacción para asegurar que ambos inserts sean atómicos
+                // Iniciar una transacciÃ³n para asegurar que ambos inserts sean atÃ³micos
                 using (var transaction = connection.BeginTransaction())
                 {
                     try
@@ -136,13 +136,13 @@ namespace Infrastructure.Services
                             }
                         }
 
-                        // Commit de la transacción si ambos inserts fueron exitosos
+                        // Commit de la transacciÃ³n si ambos inserts fueron exitosos
                         transaction.Commit();
                         return true;
                     }
                     catch (Exception ex)
                     {
-                        // Si algo falla, hacer rollback de la transacción
+                        // Si algo falla, hacer rollback de la transacciÃ³n
                         transaction.Rollback();
                         Console.WriteLine(ex.Message);
                         return false;
@@ -153,3 +153,4 @@ namespace Infrastructure.Services
 
     }
 }
+

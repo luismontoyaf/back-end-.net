@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using Core.Models;
 using Microsoft.Data.SqlClient;
-using Infrastructure.Data;
+using Data;
 using Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -19,7 +19,7 @@ namespace Infrastructure.Services
             _context = context;
         }
 
-        public EmployeDto GetUserByEmail(string email, int tenantId)
+        public EmployeDto? GetUserByEmail(string email, int tenantId)
         {
             using (var connection = new NpgsqlConnection(_connectionString))
             {
@@ -214,3 +214,4 @@ namespace Infrastructure.Services
         }
     }
 }
+

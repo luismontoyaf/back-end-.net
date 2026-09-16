@@ -1,6 +1,6 @@
-using Core.Interfaces;
+Ôªøusing Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Infrastructure.Services;
 using Newtonsoft.Json;
 
@@ -28,10 +28,15 @@ namespace Application.Services
             return (variants);
         }
 
+        public Task<Variant?> GetVariantById(int id)
+        {
+            return _IvariantRepository.GetVariantById(id);
+        }
+
         public async Task SaveVariantAsync(VariantDto variantDto)
         {
             if (string.IsNullOrEmpty(variantDto.Name))
-                throw new ArgumentException("Datos inv·lidos");
+                throw new ArgumentException("Datos inv√°lidos");
 
             var tenantId = _tenantProvider.GetTenantId();
 
@@ -54,7 +59,7 @@ namespace Application.Services
             var variant = await _IvariantRepository.GetVariantById(id);
 
             if (variant == null || variant.TenantId != tenantId)
-                throw new Exception("No se encontrÛ la variante");
+                throw new Exception("No se encontr√≥ la variante");
 
             variant.State = !variant.State;
 
@@ -88,10 +93,11 @@ namespace Application.Services
             var variant = await _IvariantRepository.GetVariantById(id);
 
             if (variant == null || variant.TenantId != tenantId)
-                throw new Exception("No se encontrÛ la variante");
+                throw new Exception("No se encontr√≥ la variante");
 
             _IvariantRepository.Delete(variant);
             await _unitOfWork.SaveChangesAsync();
         }
     }
 }
+

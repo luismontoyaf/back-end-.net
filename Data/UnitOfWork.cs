@@ -1,8 +1,8 @@
-using Application.Services;
+﻿using Application.Services;
 using Core.Interfaces;
 using Infrastructure.Services;
 
-namespace Infrastructure.Data
+namespace Data
 {
     public class UnitOfWork : IUnitOfWork
     {
@@ -33,3 +33,4 @@ namespace Infrastructure.Data
         public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
     }
 }
+

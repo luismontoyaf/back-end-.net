@@ -1,8 +1,8 @@
-using Core.Interfaces;
+﻿using Core.Interfaces;
 using Core.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure.Data
+namespace Data
 {
     public class AppDbContext : DbContext
     {
@@ -213,3 +213,4 @@ namespace Infrastructure.Data
         }
     }
 }
+

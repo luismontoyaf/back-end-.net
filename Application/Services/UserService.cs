@@ -1,7 +1,7 @@
-using Core.Models;
+﻿using Core.Models;
 using Core.Interfaces;
 using BCrypt.Net;
-using Infrastructure.Data;
+using Data;
 
 namespace Application.Services
 {
@@ -35,7 +35,7 @@ namespace Application.Services
         public bool RegisterClient(Client client)
         {
             if (string.IsNullOrEmpty(client.nombre) || string.IsNullOrEmpty(client.celular))
-                throw new ArgumentException("Datos inválidos");
+                throw new ArgumentException("Datos invÃ¡lidos");
 
             client.estado = 1;
             client.TenantId = _tenantProvider.GetTenantId();
@@ -46,7 +46,7 @@ namespace Application.Services
         public bool RegisterEmploye(EmployeDto employe)
         {
             if (string.IsNullOrEmpty(employe.nombre) || string.IsNullOrEmpty(employe.celular))
-                throw new ArgumentException("Datos inválidos");
+                throw new ArgumentException("Datos invÃ¡lidos");
 
             int tipoUsuario = VerifyTypeUser(employe.rol);
 
@@ -222,3 +222,4 @@ namespace Application.Services
         }
     }
 }
+

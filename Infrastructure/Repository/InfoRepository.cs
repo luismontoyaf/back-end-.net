@@ -1,8 +1,8 @@
-using System.Data;
+﻿using System.Data;
 using Application.Services;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Microsoft.Data.SqlClient;
 using Npgsql;
 
@@ -21,7 +21,7 @@ namespace Infrastructure.Services
             _context = context;
         }
 
-        public Client GetUserInfoByDocument(string cedula, int tenantId)
+        public Client? GetUserInfoByDocument(string cedula, int tenantId)
         {
             var client = _context.Clientes
                 .Where(u => (u.numDocumento == cedula && u.TenantId == tenantId) || cedula == "222222222222")
@@ -113,3 +113,4 @@ namespace Infrastructure.Services
 
     }
 }
+

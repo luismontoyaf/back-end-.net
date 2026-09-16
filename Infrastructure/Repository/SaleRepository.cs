@@ -1,9 +1,9 @@
-using System.Collections.Generic;
+ï»¿using System.Collections.Generic;
 using System.Data;
 using Application.Services;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,7 +45,7 @@ namespace Infrastructure.Services
                 .OrderByDescending(v => v.FechaCreacion)
                 .FirstOrDefaultAsync();
 
-            return sale ?? throw new InvalidOperationException("No se encontró una factura para el cliente especificado.");
+            return sale ?? throw new InvalidOperationException("No se encontrÃ³ una factura para el cliente especificado.");
         }
 
         public async Task<Sale> GetInvoiceByInvoiceNumber(string numFactura, int tenantId)
@@ -54,7 +54,8 @@ namespace Infrastructure.Services
                 .Where(v => v.NumeroFactura == numFactura && v.TenantId == tenantId)
                 .FirstOrDefaultAsync();
 
-            return sale ?? throw new InvalidOperationException("No se encontró una factura para el cliente especificado.");
+            return sale ?? throw new InvalidOperationException("No se encontrÃ³ una factura para el cliente especificado.");
         }
     }
 }
+

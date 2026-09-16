@@ -1,7 +1,7 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
@@ -29,3 +29,4 @@ namespace Application.Services
         }
     }
 }
+

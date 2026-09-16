@@ -1,8 +1,8 @@
-using System.Data;
+﻿using System.Data;
 using Application.Services;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -64,3 +64,4 @@ namespace Infrastructure.Services
 
     }
 }
+
