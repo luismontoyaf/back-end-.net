@@ -1,10 +1,5 @@
 using Application.Services;
-using Azure.Core;
-using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
-using Infrastructure.Services;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BackendApp.Controllers
@@ -13,21 +8,11 @@ namespace BackendApp.Controllers
     [Route("api/[controller]")]
     public class VariantController : Controller
     {
-        private readonly VariantRepository _repository;
-        private readonly IVariantRepository _IvariantRepository;
         private readonly VariantService _variantService;
-        private readonly TenantProvider _tenantProvider;
 
-        public VariantController(
-            VariantService variantService,
-            IVariantRepository IvariantRepository,
-            AppDbContext context,
-            TenantProvider tenantProvider)
+        public VariantController(VariantService variantService)
         {
-            _repository = new VariantRepository(context, tenantProvider);
             _variantService = variantService;
-            _IvariantRepository = IvariantRepository;
-            _tenantProvider = tenantProvider;
         }
 
         [HttpPost("createVariant")]
@@ -68,7 +53,7 @@ namespace BackendApp.Controllers
         {
             try
             {
-                var variant = await _IvariantRepository.GetVariantById(id);
+                var variant = await _variantService.GetVariantById(id);
 
                 if (variant == null)
                     return NotFound();

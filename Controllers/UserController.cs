@@ -1,7 +1,7 @@
-using Application.Services;
+﻿using Application.Services;
 using Core.Interfaces;
 using Core.Models;
-using Infrastructure.Data;
+using Data;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -14,23 +14,11 @@ namespace BackendApp.Controllers
     [Route("api/users/")]
     public class UserController : Controller
     {
-        private readonly UserRepository _userRepository;
-        private readonly IUserRepository _userIRepository;
         private readonly UserService _userService;
-        private readonly TenantProvider _tenantProvider;
 
-        public UserController(UserService userService, 
-            IUserRepository iUserRepository, 
-            AppDbContext context, 
-            IConfiguration configuration,
-            TenantProvider tenantProvider)
+        public UserController(UserService userService)
         {
-            string connectionString = configuration.GetConnectionString("DefaultConnection");
-
-            _userRepository = new UserRepository(connectionString, context);
             _userService = userService;
-            _userIRepository = iUserRepository;
-            _tenantProvider = tenantProvider;
         }
 
         [HttpPost("register")]
@@ -139,3 +127,4 @@ namespace BackendApp.Controllers
 
     }
 }
+

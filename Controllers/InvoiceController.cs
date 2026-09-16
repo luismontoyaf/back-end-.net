@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Core.Models;
 using Infrastructure.Services;
 using Application.Services;
-using Infrastructure.Data;
+using Data;
 using Core.Interfaces;
 
 namespace BackendApp.Controllers
@@ -15,8 +15,6 @@ namespace BackendApp.Controllers
 
         public InvoiceController(InvoiceService infoService, 
             EmailService emailService, 
-            IUserRepository userRepository, 
-            ISaleRepository saleRepository, 
             AppDbContext context)
         {
             _invoiceService = infoService;
@@ -61,3 +59,4 @@ namespace BackendApp.Controllers
 
     }
 }
+
