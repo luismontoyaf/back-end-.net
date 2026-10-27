@@ -1,10 +1,7 @@
 ﻿using Application.Services;
 using Core.Models;
-using Data;
-using Infrastructure.Services;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 
 namespace BackendApp.Controllers
 {
@@ -86,6 +83,25 @@ namespace BackendApp.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        [HttpPut("[Action]/{id}")]
+        public async Task<IActionResult> UpdateStock(int id, [FromBody] int amountStock)
+        {
+            try
+            {
+                await _productService.UpdateStock(id, amountStock);
+                return Ok(new { Message = "Stock actualizado correctamente" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
     }
 }
 
