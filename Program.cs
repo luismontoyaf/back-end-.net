@@ -6,10 +6,12 @@ using Data;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using QuestPDF.Infrastructure;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,6 +57,7 @@ builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IVariantRepository, VariantRepository>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IExpensesRepository, ExpensesRepository>();
+builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -69,6 +72,8 @@ builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<VariantService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ExpensesService>();
+builder.Services.AddScoped<SubscriptionService>();
+builder.Services.AddHostedService<SubscriptionReminderWorker>();
 
 builder.Services.AddScoped<TenantService>();
 builder.Services.AddHttpContextAccessor();
@@ -80,6 +85,19 @@ builder.Services.AddScoped<ITenantProvider>(serviceProvider =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("creator-login", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 
@@ -107,6 +125,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 app.UseCors("AllowAngularApp");
+app.UseRouting();
+app.UseRateLimiter();
+app.UseAuthentication();
 
 // Configure the HTTP request pipeline.
 //if (app.Environment.IsDevelopment())
@@ -145,4 +166,3 @@ record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
-
