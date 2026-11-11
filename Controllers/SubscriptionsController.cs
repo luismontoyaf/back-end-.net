@@ -60,6 +60,16 @@ namespace BackendApp.Controllers
             return Ok(new { message = "Empresa desactivada correctamente." });
         }
 
+        [HttpPost("tenants/{tenantId:int}/activate")]
+        public async Task<IActionResult> Activate(int tenantId)
+        {
+            var activated = await _subscriptionService.ActivateTenantAsync(tenantId);
+            if (!activated)
+                return Conflict(new { message = "La empresa no existe o ya está activa." });
+
+            return Ok(new { message = "Empresa activada correctamente." });
+        }
+
         [HttpPost("tenants/{tenantId:int}/renew")]
         public async Task<IActionResult> Renew(int tenantId)
         {
