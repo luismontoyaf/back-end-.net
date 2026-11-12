@@ -2,6 +2,7 @@
 using Core.Models;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 
 namespace BackendApp.Controllers
 {
@@ -37,12 +38,54 @@ namespace BackendApp.Controllers
         [HttpPost]
         public IActionResult AddProduct([FromForm] Product producto)
         {
-            var result = _productService.AddProduct(producto);
+            try
+            {
+                var result = _productService.AddProduct(producto);
 
-            if (result)
-                return Ok(new { Message = "Producto agregado exitosamente" });
+                if (result)
+                    return Ok(new { Message = "Producto agregado exitosamente" });
 
-            return BadRequest(new { Message = "No se pudo agregar el producto" });
+                return BadRequest(new { Message = "No se pudo agregar el producto" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { Message = ex.Message });
+            }
+        }
+
+        [HttpGet("bulk/template")]
+        public IActionResult DownloadBulkTemplate()
+        {
+            return File(_productService.GetProductImportTemplate(), "application/vnd.ms-excel", "plantilla_productos.xls");
+        }
+
+        [HttpPost("bulk/validate")]
+        public async Task<IActionResult> ValidateBulkProducts(IFormFile archivo)
+        {
+            var result = await _productService.ValidateProductImportAsync(archivo);
+            return Ok(result);
+        }
+
+        [HttpPost("bulk/save")]
+        public async Task<IActionResult> SaveBulkProducts(IFormFile archivo)
+        {
+            try
+            {
+                var total = await _productService.AddProductsFromImportAsync(archivo);
+                return Ok(new { Message = "Productos guardados correctamente.", Total = total });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { Message = ex.Message });
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+            {
+                return Conflict(new { Message = "Uno de los códigos de producto ya existe. Valide el archivo nuevamente." });
+            }
         }
 
         [HttpPatch("{id}")]
@@ -51,12 +94,19 @@ namespace BackendApp.Controllers
             if (patchDoc == null)
                 return BadRequest("Datos invÃ¡lidos");
 
-            var result = _productService.EditProduct(id, patchDoc);
+            try
+            {
+                var result = _productService.EditProduct(id, patchDoc);
 
-            if (!result)
-                return NotFound("Producto no encontrado");
+                if (!result)
+                    return NotFound("Producto no encontrado");
 
-            return Ok(new { Message = "Producto actualizado correctamente" });
+                return Ok(new { Message = "Producto actualizado correctamente" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { Message = ex.Message });
+            }
         }
 
         [HttpDelete("{id}")]
