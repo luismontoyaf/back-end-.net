@@ -45,4 +45,11 @@
     <ProjectReference Include="..\BackendApp.Infrastructure\BackendApp.Infrastructure.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<None Update="Uploads\**\*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</None>
+	</ItemGroup>
+
 </Project>
