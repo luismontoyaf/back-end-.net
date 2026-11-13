@@ -1,0 +1,240 @@
+
+name: Lumo API CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lumo-api-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore BackendApp/BackendApp.csproj
+
+      - name: Build API
+        run: dotnet build BackendApp/BackendApp.csproj --configuration Release --no-restore
+
+  deploy:
+    name: Deploy API to EC2
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore BackendApp/BackendApp.csproj
+
+      - name: Publish API
+        run: dotnet publish BackendApp/BackendApp.csproj --configuration Release --no-restore --output ./publish
+
+      - name: Verify published files
+        run: |
+          test -s ./publish/BackendApp.dll
+          test -s ./publish/BackendApp.runtimeconfig.json
+
+      - name: Package published files
+        run: tar -czf api-publish.tar.gz -C publish .
+
+      - name: Configure SSH
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          test -n "$EC2_HOST"
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload release package
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          set -euo pipefail
+
+          scp \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -i ~/.ssh/ec2_key \
+            api-publish.tar.gz \
+            "ubuntu@${EC2_HOST}:/home/ubuntu/api-publish-${GITHUB_RUN_ID}.tar.gz"
+
+      - name: Deploy, restart and verify
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -i ~/.ssh/ec2_key \
+            "ubuntu@${EC2_HOST}" \
+            "bash -s -- '${GITHUB_RUN_ID}'" <<'REMOTE_SCRIPT'
+
+          set -Eeuo pipefail
+
+          RUN_ID="$1"
+          APP_DIR="/home/ubuntu/api"
+          RELEASE="/home/ubuntu/api-publish-${RUN_ID}.tar.gz"
+          STAGE="/home/ubuntu/api-stage-${RUN_ID}"
+          BACKUP="/home/ubuntu/api-backup-${RUN_ID}"
+
+          DEPLOYMENT_STARTED=0
+
+          rollback() {
+            echo "Deployment failed. Restoring previous application files..."
+
+            sudo systemctl stop lumo || true
+
+            if rsync -a --delete \
+              --exclude='/Uploads/' \
+              --exclude='/appsettings.Production.json' \
+              "$BACKUP/" "$APP_DIR/"; then
+
+              if sudo systemctl start lumo &&
+                 sudo systemctl is-active --quiet lumo; then
+                echo "Previous application files restored."
+              else
+                echo "CRITICAL: Restored files, but lumo did not start."
+                return 1
+              fi
+            else
+              echo "CRITICAL: Rollback failed. Backup: $BACKUP"
+              return 1
+            fi
+          }
+
+          on_exit() {
+            STATUS=$?
+            trap - EXIT
+
+            if [ "$STATUS" -ne 0 ] &&
+               [ "$DEPLOYMENT_STARTED" -eq 1 ]; then
+              rollback || echo "CRITICAL: Automatic rollback failed."
+            fi
+
+            if [ "$STATUS" -eq 0 ]; then
+              rm -rf -- "$STAGE" "$BACKUP" "$RELEASE"
+            else
+              rm -rf -- "$STAGE"
+              echo "Inspect the retained backup and release files."
+            fi
+
+            exit "$STATUS"
+          }
+
+          trap on_exit EXIT
+
+          command -v rsync >/dev/null
+          command -v tar >/dev/null
+          command -v curl >/dev/null
+
+          test -s "$RELEASE"
+          test -d "$APP_DIR"
+          test -s "$APP_DIR/appsettings.Production.json"
+
+          install -d -m 700 "$STAGE" "$BACKUP"
+
+          tar -tzf "$RELEASE" >/dev/null
+          tar -xzf "$RELEASE" -C "$STAGE"
+
+          test -s "$STAGE/BackendApp.dll"
+          test -s "$STAGE/BackendApp.runtimeconfig.json"
+
+          # Back up existing application files.
+          # Preserve Uploads/ and the production configuration.
+          rsync -a \
+            --exclude='/Uploads/' \
+            --exclude='/appsettings.Production.json' \
+            "$APP_DIR/" "$BACKUP/"
+
+          # Any failure after this point triggers rollback.
+          DEPLOYMENT_STARTED=1
+
+          sudo systemctl stop lumo
+
+          # Update published files without deleting Uploads/
+          # or replacing appsettings.Production.json.
+          rsync -a --delete \
+            --exclude='/Uploads/' \
+            --exclude='/appsettings.Production.json' \
+            "$STAGE/" "$APP_DIR/"
+
+          sudo systemctl start lumo
+          sleep 5
+
+          sudo systemctl is-active --quiet lumo
+
+          # Basic HTTP listener check.
+          # Any HTTP status other than 000 counts as a response.
+          HTTP_OK=0
+
+          for ATTEMPT in $(seq 1 10); do
+            HTTP_CODE="$(curl --silent \
+              --output /dev/null \
+              --write-out '%{http_code}' \
+              --connect-timeout 3 \
+              --max-time 5 \
+              http://127.0.0.1:5000/ 2>/dev/null || true)"
+
+            if [ -n "$HTTP_CODE" ] &&
+               [ "$HTTP_CODE" != "000" ]; then
+              HTTP_OK=1
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$HTTP_OK" -ne 1 ]; then
+            echo "ERROR: API did not respond over HTTP."
+            exit 1
+          fi
+
+          DEPLOYMENT_STARTED=0
+
+          echo "Deployment completed successfully."
+          echo "lumo is active and the API responds over HTTP."
+
+          REMOTE_SCRIPT
