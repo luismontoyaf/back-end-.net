@@ -32,10 +32,10 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore dependencies
-        run: dotnet restore BackendApp/BackendApp.csproj
+        run: dotnet restore BackendApp.csproj
 
       - name: Build API
-        run: dotnet build BackendApp/BackendApp.csproj --configuration Release --no-restore
+        run: dotnet build BackendApp.csproj --configuration Release --no-restore
 
   deploy:
     name: Deploy API to EC2
@@ -54,10 +54,10 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore dependencies
-        run: dotnet restore BackendApp/BackendApp.csproj
+        run: dotnet restore BackendApp.csproj
 
       - name: Publish API
-        run: dotnet publish BackendApp/BackendApp.csproj --configuration Release --no-restore --output ./publish
+        run: dotnet publish BackendApp.csproj --configuration Release --no-restore --output ./publish
 
       - name: Verify published files
         run: |
@@ -140,7 +140,7 @@ jobs:
                 return 1
               fi
             else
-              echo "CRITICAL: Rollback failed. Backup: $BACKUP"
+              echo "CRITICAL: Rollback failed. Backup retained at $BACKUP"
               return 1
             fi
           }
@@ -182,20 +182,20 @@ jobs:
           test -s "$STAGE/BackendApp.dll"
           test -s "$STAGE/BackendApp.runtimeconfig.json"
 
-          # Back up existing application files.
-          # Preserve Uploads/ and the production configuration.
+          # Back up files while preserving Uploads/ and
+          # the server-managed production configuration.
           rsync -a \
             --exclude='/Uploads/' \
             --exclude='/appsettings.Production.json' \
             "$APP_DIR/" "$BACKUP/"
 
-          # Any failure after this point triggers rollback.
+          # Failures from this point trigger rollback.
           DEPLOYMENT_STARTED=1
 
           sudo systemctl stop lumo
 
-          # Update published files without deleting Uploads/
-          # or replacing appsettings.Production.json.
+          # Deploy without deleting Uploads/ or replacing
+          # appsettings.Production.json.
           rsync -a --delete \
             --exclude='/Uploads/' \
             --exclude='/appsettings.Production.json' \
