@@ -39,11 +39,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BackendApp.Core\BackendApp.Core.csproj" />
-    <ProjectReference Include="..\BackendApp.Application\BackendApp.Application.csproj" />
-    <ProjectReference Include="..\BackendApp.Data\BackendApp.Data.csproj" />
-    <ProjectReference Include="..\BackendApp.Infrastructure\BackendApp.Infrastructure.csproj" />
-  </ItemGroup>
+  <ProjectReference Include="BackendApp.Core\BackendApp.Core.csproj" />
+  <ProjectReference Include="BackendApp.Application\BackendApp.Application.csproj" />
+  <ProjectReference Include="BackendApp.Data\BackendApp.Data.csproj" />
+  <ProjectReference Include="BackendApp.Infrastructure\BackendApp.Infrastructure.csproj" />
+</ItemGroup>
 
 	<ItemGroup>
 		<None Update="Uploads\**\*">
