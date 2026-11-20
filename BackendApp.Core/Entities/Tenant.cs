@@ -6,6 +6,8 @@ namespace Core.Models
     {
         [Key]
         public int Id { get; set; }
+        public int CompanyId { get; set; }
+        public bool IsHeadquarters { get; set; }
         public required string nombre { get; set; }
         public required string identificador { get; set; }
         public string? nit { get; set; }
@@ -16,5 +18,6 @@ namespace Core.Models
         public DateTime? fechaCreacion { get; set; }
         public DateTime? fechaInicioSuscripcion { get; set; }
         public bool bloqueadoPorMora { get; set; }
+        public Company? Company { get; set; }
     }
 }

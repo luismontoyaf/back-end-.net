@@ -193,12 +193,13 @@ namespace Infrastructure.Services
             _context.Clientes.Update(client); // Marca todo como modificado
         }
 
-        public async Task SaveRefreshTokenAsync(int userId, int tenantId, string refreshToken, DateTime expiryDate)
+        public async Task SaveRefreshTokenAsync(int userId, int tenantId, int activeTenantId, string refreshToken, DateTime expiryDate)
         {
             var token = new UserRefreshToken
             {
                 UserId = userId,
                 TenantId = tenantId,
+                ActiveTenantId = activeTenantId,
                 Token = refreshToken,
                 ExpiryDate = expiryDate
             };

@@ -14,9 +14,10 @@ namespace Infrastructure.Services
             _context = context;
         }
 
-        public Task<List<Tenant>> GetAllTenantsAsync() =>
-            _context.Tenants.AsNoTracking()
-                .OrderBy(tenant => tenant.nombre)
+        public Task<List<Company>> GetAllCompaniesAsync() =>
+            _context.Companies.AsNoTracking()
+                .Include(company => company.Branches)
+                .OrderBy(company => company.Name)
                 .ToListAsync();
 
         public Task<List<TenantSubscriptionPeriod>> GetAllPeriodsAsync() =>
@@ -26,10 +27,10 @@ namespace Infrastructure.Services
                 .ThenBy(period => period.MonthNumber)
                 .ToListAsync();
 
-        public Task<Tenant?> GetTenantByIdAsync(int tenantId) =>
-            _context.Tenants.FirstOrDefaultAsync(tenant => tenant.Id == tenantId);
+        public Task<Company?> GetCompanyByIdAsync(int companyId) =>
+            _context.Companies.FirstOrDefaultAsync(company => company.Id == companyId);
 
-        public async Task<List<(TenantSubscriptionPeriod Period, Tenant Tenant)>> GetDueReminderCandidatesAsync(
+        public async Task<List<(TenantSubscriptionPeriod Period, Company Company)>> GetDueReminderCandidatesAsync(
             DateTime today,
             DateTime now,
             DateTime reminderCutoff)
@@ -37,16 +38,16 @@ namespace Infrastructure.Services
             var delinquentBefore = today.AddDays(-3);
             var candidates = await (
                 from period in _context.TenantSubscriptionPeriods.AsNoTracking()
-                join tenant in _context.Tenants.AsNoTracking() on period.TenantId equals tenant.Id
+                join company in _context.Companies.AsNoTracking() on period.CompanyId equals company.Id
                 where period.PaidAt == null
                     && period.DueDate < delinquentBefore
                     && (period.LastReminderSentAt == null || period.LastReminderSentAt <= reminderCutoff)
                     && (period.ReminderClaimedUntil == null || period.ReminderClaimedUntil < now)
                 orderby period.DueDate
-                select new { Period = period, Tenant = tenant })
+                select new { Period = period, Company = company })
                 .ToListAsync();
 
-            return candidates.Select(candidate => (candidate.Period, candidate.Tenant)).ToList();
+            return candidates.Select(candidate => (candidate.Period, candidate.Company)).ToList();
         }
 
         public async Task<bool> TryClaimReminderAsync(
@@ -118,20 +119,26 @@ namespace Infrastructure.Services
                     .SetProperty(period => period.ReminderClaimedUntil, (DateTime?)null));
         }
 
-        public async Task<bool> InitializeSubscriptionAsync(int tenantId, DateTime startDate, DateTime createdAt)
+        public async Task<bool> InitializeSubscriptionAsync(int companyId, DateTime startDate, DateTime createdAt)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(item => item.Id == tenantId);
-            if (tenant is null || await _context.TenantSubscriptionPeriods.AnyAsync(period => period.TenantId == tenantId))
+            var company = await _context.Companies.FirstOrDefaultAsync(item => item.Id == companyId);
+            var headquarters = await _context.Tenants.FirstOrDefaultAsync(item =>
+                item.CompanyId == companyId && item.IsHeadquarters);
+            if (company is null
+                || headquarters is null
+                || await _context.TenantSubscriptionPeriods.AnyAsync(period => period.CompanyId == companyId))
                 return false;
 
             startDate = DateTime.SpecifyKind(startDate.Date, DateTimeKind.Unspecified);
-            tenant.fechaInicioSuscripcion = startDate;
+            company.SubscriptionStartDate = startDate;
+            headquarters.fechaInicioSuscripcion = startDate;
 
             _context.TenantSubscriptionPeriods.AddRange(
                 Enumerable.Range(0, 12).Select(month => new TenantSubscriptionPeriod
                 {
-                    TenantId = tenantId,
+                    CompanyId = companyId,
+                    TenantId = headquarters.Id,
                     CycleNumber = 1,
                     MonthNumber = month + 1,
                     DueDate = startDate.AddMonths(month),
@@ -146,11 +153,11 @@ namespace Infrastructure.Services
         public async Task<bool> RecordPaymentAsync(int periodId, DateTime paidAt, string recordedBy, DateTime today)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
-            var tenantId = await _context.TenantSubscriptionPeriods
+            var companyId = await _context.TenantSubscriptionPeriods
                 .Where(item => item.Id == periodId)
-                .Select(item => item.TenantId)
+                .Select(item => item.CompanyId)
                 .FirstOrDefaultAsync();
-            if (tenantId == 0)
+            if (companyId == 0)
                 return false;
 
             var affected = await _context.TenantSubscriptionPeriods
@@ -161,20 +168,25 @@ namespace Infrastructure.Services
             if (affected != 1)
                 return false;
 
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(item => item.Id == tenantId);
-            if (tenant is null)
+            var company = await _context.Companies.FirstOrDefaultAsync(item => item.Id == companyId);
+            if (company is null)
                 return false;
 
             var overdueBefore = today.AddDays(-3);
             var hasOverdueBalance = await _context.TenantSubscriptionPeriods
-                .AnyAsync(item => item.TenantId == tenant.Id
+                .AnyAsync(item => item.CompanyId == company.Id
                     && item.PaidAt == null
                     && item.DueDate < overdueBefore);
 
-            if (tenant.bloqueadoPorMora && !hasOverdueBalance)
+            if (company.SuspendedForOverdue && !hasOverdueBalance)
             {
-                tenant.estado = true;
-                tenant.bloqueadoPorMora = false;
+                company.IsActive = true;
+                company.SuspendedForOverdue = false;
+                await _context.Tenants
+                    .Where(branch => branch.CompanyId == company.Id)
+                    .ExecuteUpdateAsync(update => update
+                        .SetProperty(branch => branch.estado, true)
+                        .SetProperty(branch => branch.bloqueadoPorMora, false));
             }
 
             await _context.SaveChangesAsync();
@@ -182,45 +194,57 @@ namespace Infrastructure.Services
             return true;
         }
 
-        public async Task<bool> DeactivateTenantAsync(int tenantId, DateTime overdueBefore)
+        public async Task<bool> DeactivateCompanyAsync(int companyId, DateTime overdueBefore)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(item => item.Id == tenantId);
-            if (tenant is null || !tenant.estado)
+            var company = await _context.Companies.FirstOrDefaultAsync(item => item.Id == companyId);
+            if (company is null || !company.IsActive)
                 return false;
 
             var hasOverdueBalance = await _context.TenantSubscriptionPeriods
-                .AnyAsync(period => period.TenantId == tenantId
+                .AnyAsync(period => period.CompanyId == companyId
                     && period.PaidAt == null
                     && period.DueDate < overdueBefore);
-            tenant.estado = false;
-            tenant.bloqueadoPorMora = hasOverdueBalance;
+            company.IsActive = false;
+            company.SuspendedForOverdue = hasOverdueBalance;
+            await _context.Tenants
+                .Where(branch => branch.CompanyId == companyId)
+                .ExecuteUpdateAsync(update => update
+                    .SetProperty(branch => branch.estado, false)
+                    .SetProperty(branch => branch.bloqueadoPorMora, hasOverdueBalance));
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
             return true;
         }
 
-        public async Task<bool> ActivateTenantAsync(int tenantId)
+        public async Task<bool> ActivateCompanyAsync(int companyId)
         {
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(item => item.Id == tenantId);
-            if (tenant is null || tenant.estado)
+            var company = await _context.Companies.FirstOrDefaultAsync(item => item.Id == companyId);
+            if (company is null || company.IsActive)
                 return false;
 
-            tenant.estado = true;
-            tenant.bloqueadoPorMora = false;
+            company.IsActive = true;
+            company.SuspendedForOverdue = false;
+            await _context.Tenants
+                .Where(branch => branch.CompanyId == companyId)
+                .ExecuteUpdateAsync(update => update
+                    .SetProperty(branch => branch.estado, true)
+                    .SetProperty(branch => branch.bloqueadoPorMora, false));
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> RenewSubscriptionAsync(int tenantId, DateTime createdAt)
+        public async Task<bool> RenewSubscriptionAsync(int companyId, DateTime createdAt)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(item => item.Id == tenantId);
-            if (tenant is null)
+            var company = await _context.Companies.FirstOrDefaultAsync(item => item.Id == companyId);
+            var headquarters = await _context.Tenants.FirstOrDefaultAsync(item =>
+                item.CompanyId == companyId && item.IsHeadquarters);
+            if (company is null || headquarters is null)
                 return false;
 
             var periods = await _context.TenantSubscriptionPeriods
-                .Where(period => period.TenantId == tenantId)
+                .Where(period => period.CompanyId == companyId)
                 .OrderBy(period => period.CycleNumber)
                 .ThenBy(period => period.MonthNumber)
                 .ToListAsync();
@@ -240,7 +264,8 @@ namespace Infrastructure.Services
             _context.TenantSubscriptionPeriods.AddRange(
                 Enumerable.Range(0, 12).Select(month => new TenantSubscriptionPeriod
                 {
-                    TenantId = tenantId,
+                    CompanyId = companyId,
+                    TenantId = headquarters.Id,
                     CycleNumber = latestCycleNumber + 1,
                     MonthNumber = month + 1,
                     DueDate = nextCycleStart.AddMonths(month + 1),

@@ -25,7 +25,15 @@ namespace Application.Services
         public Tenant? GetByIdentifier(string identifier)
         {
             return _context.Tenants
+                .Include(tenant => tenant.Company)
                 .FirstOrDefault(t => t.identificador == identifier);
+        }
+
+        public Tenant? GetById(int tenantId)
+        {
+            return _context.Tenants
+                .Include(tenant => tenant.Company)
+                .FirstOrDefault(tenant => tenant.Id == tenantId);
         }
     }
 }

@@ -73,6 +73,8 @@ builder.Services.AddScoped<VariantService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ExpensesService>();
 builder.Services.AddScoped<SubscriptionService>();
+builder.Services.AddScoped<BranchManagementService>();
+builder.Services.AddScoped<CompanySettingsService>();
 builder.Services.AddHostedService<SubscriptionReminderWorker>();
 
 builder.Services.AddScoped<TenantService>();

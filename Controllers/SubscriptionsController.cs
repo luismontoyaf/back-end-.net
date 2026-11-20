@@ -12,27 +12,79 @@ namespace BackendApp.Controllers
     public sealed class SubscriptionsController : ControllerBase
     {
         private readonly SubscriptionService _subscriptionService;
+        private readonly BranchManagementService _branchService;
+        private readonly CompanySettingsService _companySettingsService;
 
-        public SubscriptionsController(SubscriptionService subscriptionService)
+        public SubscriptionsController(
+            SubscriptionService subscriptionService,
+            BranchManagementService branchService,
+            CompanySettingsService companySettingsService)
         {
             _subscriptionService = subscriptionService;
+            _branchService = branchService;
+            _companySettingsService = companySettingsService;
         }
 
-        [HttpGet("tenants")]
-        public async Task<ActionResult<List<SubscriptionTenantDto>>> GetTenants()
+        [HttpGet("companies")]
+        public async Task<ActionResult<List<SubscriptionCompanyDto>>> GetCompanies()
         {
-            return Ok(await _subscriptionService.GetAllTenantsAsync());
+            return Ok(await _subscriptionService.GetAllCompaniesAsync());
         }
 
-        [HttpPost("tenants/{tenantId:int}/initialize")]
+        [HttpGet("plan-upgrade-requests")]
+        public async Task<ActionResult<List<PlanUpgradeRequestDto>>> GetPendingPlanUpgradeRequests()
+        {
+            return Ok(await _companySettingsService.GetPendingUpgradeRequestsAsync());
+        }
+
+        [HttpPost("plan-upgrade-requests/{requestId:int}/approve")]
+        public async Task<IActionResult> ApprovePlanUpgradeRequest(int requestId)
+        {
+            var approverEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name ?? "creator";
+            var approved = await _companySettingsService.ApprovePlusUpgradeAsync(requestId, approverEmail);
+            if (!approved)
+                return Conflict(new { message = "La solicitud no existe o ya fue procesada." });
+
+            return Ok(new { message = "Se aprobó la mejora al plan Plus." });
+        }
+
+        [HttpPost("plan-upgrade-requests/{requestId:int}/reject")]
+        public async Task<IActionResult> RejectPlanUpgradeRequest(int requestId)
+        {
+            var reviewerEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name ?? "creator";
+            var rejected = await _companySettingsService.RejectPlusUpgradeAsync(requestId, reviewerEmail);
+            if (!rejected)
+                return Conflict(new { message = "La solicitud no existe o ya fue procesada." });
+
+            return Ok(new { message = "Se rechazó la solicitud de mejora a Plus." });
+        }
+
+        [HttpPost("companies")]
+        public async Task<ActionResult<CompanyBranchDto>> CreateCompany([FromBody] CreateCompanyRequest request)
+        {
+            try
+            {
+                return Ok(await _branchService.CreateCompanyAsync(request));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(new { message = exception.Message });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Conflict(new { message = exception.Message });
+            }
+        }
+
+        [HttpPost("companies/{companyId:int}/initialize")]
         public async Task<IActionResult> InitializeSubscription(
-            int tenantId,
+            int companyId,
             [FromBody] InitializeSubscriptionRequest request)
         {
             if (request.StartDate == default)
                 return BadRequest(new { message = "La fecha de inicio es obligatoria." });
 
-            var initialized = await _subscriptionService.InitializeSubscriptionAsync(tenantId, request.StartDate);
+            var initialized = await _subscriptionService.InitializeSubscriptionAsync(companyId, request.StartDate);
             if (!initialized)
                 return Conflict(new { message = "No se pudo inicializar la suscripción. Verifica la empresa y si ya tiene obligaciones." });
 
@@ -50,30 +102,30 @@ namespace BackendApp.Controllers
             return Ok(new { message = "Pago registrado correctamente." });
         }
 
-        [HttpPost("tenants/{tenantId:int}/deactivate")]
-        public async Task<IActionResult> Deactivate(int tenantId)
+        [HttpPost("companies/{companyId:int}/deactivate")]
+        public async Task<IActionResult> Deactivate(int companyId)
         {
-            var deactivated = await _subscriptionService.DeactivateTenantAsync(tenantId);
+            var deactivated = await _subscriptionService.DeactivateCompanyAsync(companyId);
             if (!deactivated)
                 return Conflict(new { message = "La empresa no existe o ya está inactiva." });
 
             return Ok(new { message = "Empresa desactivada correctamente." });
         }
 
-        [HttpPost("tenants/{tenantId:int}/activate")]
-        public async Task<IActionResult> Activate(int tenantId)
+        [HttpPost("companies/{companyId:int}/activate")]
+        public async Task<IActionResult> Activate(int companyId)
         {
-            var activated = await _subscriptionService.ActivateTenantAsync(tenantId);
+            var activated = await _subscriptionService.ActivateCompanyAsync(companyId);
             if (!activated)
                 return Conflict(new { message = "La empresa no existe o ya está activa." });
 
             return Ok(new { message = "Empresa activada correctamente." });
         }
 
-        [HttpPost("tenants/{tenantId:int}/renew")]
-        public async Task<IActionResult> Renew(int tenantId)
+        [HttpPost("companies/{companyId:int}/renew")]
+        public async Task<IActionResult> Renew(int companyId)
         {
-            var renewed = await _subscriptionService.RenewSubscriptionAsync(tenantId);
+            var renewed = await _subscriptionService.RenewSubscriptionAsync(companyId);
             if (!renewed)
                 return Conflict(new { message = "La renovación solo está disponible cuando los 12 meses del ciclo están pagados." });
 
