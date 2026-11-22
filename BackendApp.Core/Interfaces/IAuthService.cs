@@ -7,6 +7,7 @@ namespace Core.Interfaces
         Task<AuthResult> LoginAsync(LoginRequest request);
         Task<AuthResult> LogoutAsync(string refreshToken);
         Task<AuthResult> RefreshTokenAsync(string refreshToken);
+        Task<AuthResult> SwitchBranchAsync(int userId, int homeTenantId, int branchId);
         Task RequestPasswordResetAsync(string email, string tenantIdentifier);
         Task<bool> ResetPasswordAsync(string token, string newPassword, string tenantIdentifier);
     }

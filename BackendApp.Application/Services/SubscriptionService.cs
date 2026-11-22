@@ -23,29 +23,46 @@ namespace Application.Services
             _logger = logger;
         }
 
-        public async Task<List<SubscriptionTenantDto>> GetAllTenantsAsync()
+        public async Task<List<SubscriptionCompanyDto>> GetAllCompaniesAsync()
         {
             var today = GetColombiaToday();
-            var tenants = await _repository.GetAllTenantsAsync();
+            var companies = await _repository.GetAllCompaniesAsync();
             var allPeriods = await _repository.GetAllPeriodsAsync();
             var periodsByTenant = allPeriods
-                .GroupBy(period => period.TenantId)
+                .GroupBy(period => period.CompanyId)
                 .ToDictionary(group => group.Key, group => group.ToList());
-            var result = new List<SubscriptionTenantDto>(tenants.Count);
+            var result = new List<SubscriptionCompanyDto>(companies.Count);
 
-            foreach (var tenant in tenants)
+            foreach (var company in companies)
             {
-                var periods = periodsByTenant.GetValueOrDefault(tenant.Id, []);
-                result.Add(new SubscriptionTenantDto
+                var periods = periodsByTenant.GetValueOrDefault(company.Id, []);
+                result.Add(new SubscriptionCompanyDto
                 {
-                    Id = tenant.Id,
-                    Name = tenant.nombre,
-                    Identifier = tenant.identificador,
-                    Nit = tenant.nit ?? string.Empty,
-                    Email = tenant.correo ?? string.Empty,
-                    IsActive = tenant.estado,
-                    SuspendedForOverdue = tenant.bloqueadoPorMora,
-                    StartDate = tenant.fechaInicioSuscripcion,
+                    Id = company.Id,
+                    Name = company.Name,
+                    Nit = company.Nit,
+                    Email = company.Email,
+                    SubscriptionPlan = company.SubscriptionPlan,
+                    IsActive = company.IsActive,
+                    SuspendedForOverdue = company.SuspendedForOverdue,
+                    StartDate = company.SubscriptionStartDate,
+                    Branches = company.Branches
+                        .OrderByDescending(branch => branch.IsHeadquarters)
+                        .ThenBy(branch => branch.nombre)
+                        .Select(branch => new CompanyBranchDto
+                        {
+                            Id = branch.Id,
+                            Name = branch.nombre,
+                            Identifier = branch.identificador,
+                            Nit = branch.nit ?? string.Empty,
+                            Email = branch.correo ?? string.Empty,
+                            CompanyNit = company.Nit,
+                            CompanyEmail = company.Email,
+                            Phone = branch.celular ?? string.Empty,
+                            Address = branch.direccion ?? string.Empty,
+                            IsActive = branch.estado,
+                            IsHeadquarters = branch.IsHeadquarters
+                        }).ToList(),
                     Periods = periods.Select(period => new SubscriptionPeriodDto
                     {
                         Id = period.Id,
@@ -63,13 +80,13 @@ namespace Application.Services
             return result;
         }
 
-        public async Task<bool> InitializeSubscriptionAsync(int tenantId, DateTime startDate)
+        public async Task<bool> InitializeSubscriptionAsync(int companyId, DateTime startDate)
         {
             if (startDate == default)
                 throw new ArgumentException("La fecha de inicio es obligatoria.");
 
             return await _repository.InitializeSubscriptionAsync(
-                tenantId,
+                companyId,
                 DateTime.SpecifyKind(startDate.Date, DateTimeKind.Unspecified),
                 DateTime.UtcNow);
         }
@@ -81,16 +98,16 @@ namespace Application.Services
                 recordedBy,
                 GetColombiaToday());
 
-        public Task<bool> DeactivateTenantAsync(int tenantId) =>
-            _repository.DeactivateTenantAsync(
-                tenantId,
+        public Task<bool> DeactivateCompanyAsync(int companyId) =>
+            _repository.DeactivateCompanyAsync(
+                companyId,
                 GetColombiaToday().AddDays(-3));
 
-        public Task<bool> ActivateTenantAsync(int tenantId) =>
-            _repository.ActivateTenantAsync(tenantId);
+        public Task<bool> ActivateCompanyAsync(int companyId) =>
+            _repository.ActivateCompanyAsync(companyId);
 
-        public Task<bool> RenewSubscriptionAsync(int tenantId) =>
-            _repository.RenewSubscriptionAsync(tenantId, DateTime.UtcNow);
+        public Task<bool> RenewSubscriptionAsync(int companyId) =>
+            _repository.RenewSubscriptionAsync(companyId, DateTime.UtcNow);
 
         public async Task ProcessDueRemindersAsync(CancellationToken cancellationToken)
         {
@@ -100,7 +117,7 @@ namespace Application.Services
             var reminderCutoff = now.AddDays(-2);
             var candidates = await _repository.GetDueReminderCandidatesAsync(today, now, reminderCutoff);
 
-            foreach (var (period, tenant) in candidates)
+            foreach (var (period, company) in candidates)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!await _repository.TryClaimReminderAsync(period.Id, today, now, reminderCutoff))
@@ -108,14 +125,14 @@ namespace Application.Services
 
                 try
                 {
-                    var senderEmail = _configuration["MAILJET_SENDER_EMAIL"] ?? tenant.correo;
-                    if (string.IsNullOrWhiteSpace(tenant.correo))
-                        throw new InvalidOperationException($"El tenant {tenant.identificador} no tiene correo de contacto.");
+                    var senderEmail = _configuration["MAILJET_SENDER_EMAIL"] ?? company.Email;
+                    if (string.IsNullOrWhiteSpace(company.Email))
+                        throw new InvalidOperationException($"La empresa {company.Name} no tiene correo de contacto.");
                     if (string.IsNullOrWhiteSpace(senderEmail))
                         throw new InvalidOperationException("No hay un correo remitente configurado para los recordatorios.");
 
                     var reminderNumber = period.ReminderCount + 1;
-                    var recipients = new[] { tenant.correo, creatorEmail }
+                    var recipients = new[] { company.Email, creatorEmail }
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToArray();
                     var deliveredRecipients = await _repository.GetDeliveredReminderRecipientsAsync(
@@ -126,10 +143,10 @@ namespace Application.Services
                     {
                         await _emailService.SendSubscriptionOverdueReminderAsync(
                             recipient,
-                            string.Equals(recipient, tenant.correo, StringComparison.OrdinalIgnoreCase)
-                                ? tenant.nombre
+                            string.Equals(recipient, company.Email, StringComparison.OrdinalIgnoreCase)
+                                ? company.Name
                                 : "Equipo Lumo",
-                            tenant.nombre,
+                            company.Name,
                             senderEmail,
                             period.DueDate);
                         await _repository.RecordReminderDeliveryAsync(
@@ -146,7 +163,7 @@ namespace Application.Services
                     _logger.LogError(
                         exception,
                         "Could not send subscription reminder for tenant {TenantId}, period {PeriodId}.",
-                        tenant.Id,
+                        company.Id,
                         period.Id);
                     await _repository.ReleaseReminderClaimAsync(period.Id);
                 }
