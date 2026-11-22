@@ -138,7 +138,7 @@ namespace Application.Services
                     unauthorized: true);
             }
 
-            if (!tenant.estado)
+            if (!tenant.estado || tenant.Company?.IsActive != true)
             {
                 return AuthResult.Failure(
                     "La empresa se encuentra inactiva. Contacta a soporte para recibir ayuda.",
@@ -147,16 +147,16 @@ namespace Application.Services
 
             await _userRepository.DeleteRefreshTokenByUserAsync(user.Id, tenant.Id);
 
-            var accessToken = GenerateJwtToken(user);
             var refreshToken = GenerateRefreshToken();
 
             await _userRepository.SaveRefreshTokenAsync(
                 user.Id,
                 user.TenantId,
+                tenant.Id,
                 refreshToken,
                 DateTime.UtcNow.AddDays(7));
 
-            return AuthResult.Success(accessToken, refreshToken);
+            return AuthResult.Success(GenerateJwtToken(user, tenant.Id), refreshToken);
         }
 
         public async Task<AuthResult> LogoutAsync(string refreshToken)
@@ -194,6 +194,18 @@ namespace Application.Services
             if (storedToken.TenantId != user.TenantId)
                 return AuthResult.Failure("Token inválido para este tenant", unauthorized: true);
 
+            var activeTenant = _tenantService.GetById(storedToken.ActiveTenantId);
+            var homeTenant = _tenantService.GetById(user.TenantId);
+            if (activeTenant is null
+                || homeTenant is null
+                || activeTenant.CompanyId != homeTenant.CompanyId
+                || (user.rol != 1 && activeTenant.Id != user.TenantId)
+                || !activeTenant.estado
+                || activeTenant.Company?.IsActive != true)
+            {
+                return AuthResult.Failure("La sede activa no está disponible para esta cuenta", unauthorized: true);
+            }
+
             var userDto = new EmployeDto
             {
                 Id = user.Id,
@@ -201,23 +213,59 @@ namespace Application.Services
                 nombre = user.nombre,
                 apellidos = user.apellidos,
                 correo = user.correo,
-                rol = _userService.ConvertTypeUser(user.rol)
+                rol = user.rol.ToString()
             };
 
-            var newAccessToken = GenerateJwtToken(userDto);
             var newRefreshToken = GenerateRefreshToken();
 
             await _userRepository.DeleteRefreshTokenByUserAsync(user.Id, user.TenantId);
             await _userRepository.SaveRefreshTokenAsync(
                 user.Id,
                 user.TenantId,
+                activeTenant.Id,
                 newRefreshToken,
                 DateTime.UtcNow.AddDays(1));
 
-            return AuthResult.Success(newAccessToken, newRefreshToken);
+            return AuthResult.Success(GenerateJwtToken(userDto, activeTenant.Id), newRefreshToken);
         }
 
-        private string GenerateJwtToken(EmployeDto user)
+        public async Task<AuthResult> SwitchBranchAsync(int userId, int homeTenantId, int branchId)
+        {
+            var user = await _userRepository.GetUserByIdAsync(userId, homeTenantId);
+            var homeTenant = _tenantService.GetById(homeTenantId);
+            var branch = _tenantService.GetById(branchId);
+            if (user is null || user.rol != 1 || homeTenant is null || branch is null
+                || homeTenant.CompanyId != branch.CompanyId
+                || !string.Equals(homeTenant.Company?.SubscriptionPlan, CompanyPlan.Plus, StringComparison.OrdinalIgnoreCase))
+            {
+                return AuthResult.Failure("No tienes acceso a esta sede", unauthorized: true);
+            }
+
+            if (!branch.estado || branch.Company?.IsActive != true)
+                return AuthResult.Failure("La sede no está activa", unauthorized: true);
+
+            await _userRepository.DeleteRefreshTokenByUserAsync(user.Id, user.TenantId);
+            var refreshToken = GenerateRefreshToken();
+            await _userRepository.SaveRefreshTokenAsync(
+                user.Id,
+                user.TenantId,
+                branch.Id,
+                refreshToken,
+                DateTime.UtcNow.AddDays(7));
+
+            var userDto = new EmployeDto
+            {
+                Id = user.Id,
+                TenantId = user.TenantId,
+                nombre = user.nombre,
+                apellidos = user.apellidos,
+                correo = user.correo,
+                rol = user.rol.ToString()
+            };
+            return AuthResult.Success(GenerateJwtToken(userDto, branch.Id), refreshToken);
+        }
+
+        private string GenerateJwtToken(EmployeDto user, int activeTenantId)
         {
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
@@ -230,7 +278,8 @@ namespace Application.Services
                 new Claim(ClaimTypes.Name, user.nombre ?? string.Empty),
                 new Claim(ClaimTypes.Email, user.correo ?? string.Empty),
                 new Claim(ClaimTypes.Role, user.rol ?? string.Empty),
-                new Claim("tenantId", user.TenantId.ToString())
+                new Claim("tenantId", activeTenantId.ToString()),
+                new Claim("homeTenantId", user.TenantId.ToString())
             };
 
             var token = new JwtSecurityToken(

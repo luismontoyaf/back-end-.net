@@ -7,6 +7,7 @@ namespace Core.Models
         public int IdRefreshToken { get; set; }
         public int UserId { get; set; }
         public int TenantId { get; set; }
+        public int ActiveTenantId { get; set; }
         public string Token { get; set; } = string.Empty;
         public DateTime ExpiryDate { get; set; }
     }

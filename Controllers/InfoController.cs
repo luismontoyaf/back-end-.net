@@ -12,10 +12,12 @@ namespace BackendApp.Controllers
     public class InfoController : Controller
     {
         private readonly InfoService _infoService;
+        private readonly TenantService _tenantService;
 
-        public InfoController(InfoService infoService)
+        public InfoController(InfoService infoService, TenantService tenantService)
         {
             _infoService = infoService;
+            _tenantService = tenantService;
         }
 
         [HttpGet("getUserInfo")]
@@ -28,6 +30,13 @@ namespace BackendApp.Controllers
                 return Unauthorized();
 
             var userClaims = identity.Claims;
+            var tenantId = userClaims.FirstOrDefault(x => x.Type == "tenantId")?.Value;
+            if (!int.TryParse(tenantId, out var activeTenantId))
+                return Unauthorized();
+
+            var activeTenant = _tenantService.GetById(activeTenantId);
+            if (activeTenant?.Company is null)
+                return Unauthorized();
 
             var userInfo = new
             {
@@ -35,7 +44,8 @@ namespace BackendApp.Controllers
                 Username = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value,
                 Email = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.Email)?.Value,
                 Role = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.Role)?.Value,
-                TenantId = userClaims.FirstOrDefault(x => x.Type == "tenantId")?.Value
+                TenantId = tenantId,
+                SubscriptionPlan = activeTenant.Company.SubscriptionPlan
             };
 
             return Ok(userInfo);

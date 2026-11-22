@@ -18,7 +18,7 @@ namespace Core.Interfaces
         Task<Employe?> GetUserByIdClientAsync(int id, int tenantId);
         void Update(Employe user);
         void UpdateClient(Client client);
-        Task SaveRefreshTokenAsync(int userId, int tenantId, string refreshToken, DateTime expiryDate);
+        Task SaveRefreshTokenAsync(int userId, int tenantId, int activeTenantId, string refreshToken, DateTime expiryDate);
         Task<UserRefreshToken?> GetRefreshTokenAsync(string refreshToken);
         Task DeleteRefreshTokenByUserAsync(int userId, int tenantId);
         Task InvalidatePasswordResetTokensAsync(int userId, int tenantId);

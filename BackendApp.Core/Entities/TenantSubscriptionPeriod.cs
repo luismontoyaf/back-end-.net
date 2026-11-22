@@ -3,6 +3,8 @@ namespace Core.Models
     public class TenantSubscriptionPeriod
     {
         public int Id { get; set; }
+        public int CompanyId { get; set; }
+        // Retained for legacy reporting; new billing is owned by the company.
         public int TenantId { get; set; }
         public int CycleNumber { get; set; }
         public int MonthNumber { get; set; }

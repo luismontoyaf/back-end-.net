@@ -17,6 +17,8 @@ namespace Data
         public required DbSet<Variant> Variants { get; set; }
         public required DbSet<ImagenProducto> ImagenesProducto { get; set; }
         public required DbSet<Tenant> Tenants { get; set; }
+        public DbSet<Company> Companies => Set<Company>();
+        public DbSet<CompanyPlanUpgradeRequest> CompanyPlanUpgradeRequests => Set<CompanyPlanUpgradeRequest>();
         public required DbSet<TenantSubscriptionPeriod> TenantSubscriptionPeriods { get; set; }
         public required DbSet<TenantSubscriptionReminderDelivery> TenantSubscriptionReminderDeliveries { get; set; }
         public required DbSet<Egreso> Egresos { get; set; }
@@ -130,6 +132,7 @@ namespace Data
                 entity.Property(e => e.IdRefreshToken).HasColumnName("id_refresh_token");
                 entity.Property(e => e.UserId).HasColumnName("user_id");
                 entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+                entity.Property(e => e.ActiveTenantId).HasColumnName("active_tenant_id");
                 entity.Property(e => e.Token).HasColumnName("token");
                 entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
             });
@@ -180,6 +183,58 @@ namespace Data
                 entity.Property(e => e.fechaCreacion).HasColumnName("fecha_creacion").HasDefaultValueSql("NOW()");
                 entity.Property(e => e.fechaInicioSuscripcion).HasColumnName("fecha_inicio_suscripcion").HasColumnType("date");
                 entity.Property(e => e.bloqueadoPorMora).HasColumnName("bloqueado_por_mora").HasDefaultValue(false);
+                entity.Property(e => e.CompanyId).HasColumnName("company_id");
+                entity.Property(e => e.IsHeadquarters).HasColumnName("is_headquarters").HasDefaultValue(false);
+                entity.HasOne(e => e.Company)
+                    .WithMany(company => company.Branches)
+                    .HasForeignKey(e => e.CompanyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => e.CompanyId);
+            });
+
+            modelBuilder.Entity<Company>(entity =>
+            {
+                entity.ToTable("companies");
+                entity.HasKey(company => company.Id);
+                entity.Property(company => company.Id).HasColumnName("id");
+                entity.Property(company => company.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
+                entity.Property(company => company.Nit).HasColumnName("nit").HasMaxLength(50);
+                entity.Property(company => company.Email).HasColumnName("email").HasMaxLength(255);
+                entity.Property(company => company.Phone).HasColumnName("phone").HasMaxLength(50);
+                entity.Property(company => company.Address).HasColumnName("address").HasMaxLength(500);
+                entity.Property(company => company.SubscriptionPlan)
+                    .HasColumnName("subscription_plan")
+                    .HasMaxLength(20)
+                    .HasDefaultValue(CompanyPlan.Standard);
+                entity.Property(company => company.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+                entity.Property(company => company.SuspendedForOverdue).HasColumnName("suspended_for_overdue").HasDefaultValue(false);
+                entity.Property(company => company.SubscriptionStartDate).HasColumnName("subscription_start_date").HasColumnType("date");
+                entity.Property(company => company.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
+            });
+
+            modelBuilder.Entity<CompanyPlanUpgradeRequest>(entity =>
+            {
+                entity.ToTable("company_plan_upgrade_requests");
+                entity.HasKey(request => request.Id);
+                entity.Property(request => request.Id).HasColumnName("id");
+                entity.Property(request => request.CompanyId).HasColumnName("company_id");
+                entity.Property(request => request.RequestedByEmail).HasColumnName("requested_by_email").HasMaxLength(255);
+                entity.Property(request => request.RequestedAt)
+                    .HasColumnName("requested_at")
+                    .HasColumnType("timestamp with time zone");
+                entity.Property(request => request.Status).HasColumnName("status").HasMaxLength(20);
+                entity.Property(request => request.DecidedAt)
+                    .HasColumnName("decided_at")
+                    .HasColumnType("timestamp with time zone");
+                entity.Property(request => request.DecidedByEmail).HasColumnName("decided_by_email").HasMaxLength(255);
+                entity.HasOne(request => request.Company)
+                    .WithMany()
+                    .HasForeignKey(request => request.CompanyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(request => request.CompanyId)
+                    .IsUnique()
+                    .HasFilter("status = 'pending'")
+                    .HasDatabaseName("ux_company_plan_upgrade_requests_pending");
             });
 
             modelBuilder.Entity<TenantSubscriptionPeriod>(entity =>
@@ -187,6 +242,7 @@ namespace Data
                 entity.ToTable("tenant_subscription_periods");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.CompanyId).HasColumnName("company_id");
                 entity.Property(e => e.TenantId).HasColumnName("tenant_id");
                 entity.Property(e => e.CycleNumber).HasColumnName("cycle_number");
                 entity.Property(e => e.MonthNumber).HasColumnName("month_number");
@@ -197,11 +253,11 @@ namespace Data
                 entity.Property(e => e.ReminderCount).HasColumnName("reminder_count").HasDefaultValue(0);
                 entity.Property(e => e.ReminderClaimedUntil).HasColumnName("reminder_claimed_until");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
-                entity.HasOne<Tenant>()
+                entity.HasOne<Company>()
                     .WithMany()
-                    .HasForeignKey(e => e.TenantId)
+                    .HasForeignKey(e => e.CompanyId)
                     .OnDelete(DeleteBehavior.Cascade);
-                entity.HasIndex(e => new { e.TenantId, e.CycleNumber, e.MonthNumber }).IsUnique();
+                entity.HasIndex(e => new { e.CompanyId, e.CycleNumber, e.MonthNumber }).IsUnique();
                 entity.HasIndex(e => new { e.DueDate, e.PaidAt });
             });
 

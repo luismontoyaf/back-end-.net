@@ -1,6 +1,7 @@
 using Application.Services;
 using Core.Interfaces;
 using Core.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
@@ -38,6 +39,24 @@ namespace BackendApp.Controllers
         {
             var result = await _authService.RefreshTokenAsync(request.RefreshToken);
             return ToActionResult(result, includeLowercaseTokenNames: true);
+        }
+
+        [Authorize]
+        [HttpPost("switch-branch")]
+        public async Task<IActionResult> SwitchBranch([FromBody] SwitchBranchRequest request)
+        {
+            var userIdValue = User.FindFirst("userId")?.Value;
+            var homeTenantValue = User.FindFirst("homeTenantId")?.Value
+                ?? User.FindFirst("tenantId")?.Value;
+            if (!int.TryParse(userIdValue, out var userId)
+                || !int.TryParse(homeTenantValue, out var homeTenantId)
+                || request.BranchId <= 0)
+            {
+                return Unauthorized();
+            }
+
+            var result = await _authService.SwitchBranchAsync(userId, homeTenantId, request.BranchId);
+            return ToActionResult(result, includeLowercaseTokenNames: false);
         }
 
         [HttpPost("password-reset/request")]
